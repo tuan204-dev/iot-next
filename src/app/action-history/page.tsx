@@ -1,317 +1,471 @@
-import React from 'react'
+'use client'
+import React, { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
+import { Button, DatePicker, Input, Select, Table, Tag } from 'antd'
+import { ColumnsType } from 'antd/es/table'
+import { DownloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Controller, useForm } from 'react-hook-form'
+import { z } from 'zod'
+import dayjs from 'dayjs'
+import { IPaginatedResponse } from '@/types'
+import { IActionHistory } from '@/types/action-history'
+import { getActionHistories } from '@/servers/action-history'
+import { getAllActions } from '@/servers/actions'
+import { getAllActuators } from '@/servers/actuators'
+import { IAction } from '@/types/action'
+import { IActuator } from '@/types/actuator'
+
+type FilterFormData = {
+    queryName?: string;
+    actuatorIds?: string[];
+    actionIds?: string[];
+    status?: string;
+    startDate?: number;
+    endDate?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+    page?: number;
+    size?: number;
+};
+
+const filterSchema = z.object({
+    queryName: z.string().optional(),
+    actuatorIds: z.array(z.string()).optional(),
+    actionIds: z.array(z.string()).optional(),
+    status: z.string().optional(),
+    startDate: z.number().optional(),
+    endDate: z.number().optional(),
+    sortBy: z.string().optional(),
+    sortOrder: z.enum(['ASC', 'DESC']).optional(),
+    page: z.number().min(1).default(1),
+    size: z.number().min(1).max(100).default(10),
+});
 
 const ActionHistoryPage = () => {
+    const [data, setData] = useState<IPaginatedResponse<IActionHistory>>({
+        data: [],
+        pagination: {
+            total: 0,
+            page: 1,
+            size: 10,
+            totalPages: 0
+        }
+    });
+    const [loading, setLoading] = useState(false);
+    const [actions, setActions] = useState<IAction[]>([]);
+    const [actuators, setActuators] = useState<IActuator[]>([]);
+
+    const { control, handleSubmit, reset, formState: { errors }, setValue, getValues, watch } = useForm<FilterFormData>({
+        resolver: zodResolver(filterSchema),
+    });
+
+    console.log('watch', watch())
+
+    const fetchActions = useCallback(async () => {
+        try {
+            const actions = await getAllActions();
+            setActions(actions);
+        } catch (error) {
+            console.error('Error fetching actions:', error);
+        }
+    }, []);
+
+    const fetchActuators = useCallback(async () => {
+        try {
+            const actuators = await getAllActuators();
+            setActuators(actuators);
+        } catch (error) {
+            console.error('Error fetching actuators:', error);
+        }
+    }, []);
+
+    const fetchData = async (filter: FilterFormData) => {
+        setLoading(true);
+        try {
+            const cleanedFilter = { ...filter };
+            Object.keys(cleanedFilter).forEach(key => {
+                if (cleanedFilter[key as keyof FilterFormData] === undefined || cleanedFilter[key as keyof FilterFormData] === null) {
+                    delete cleanedFilter[key as keyof FilterFormData];
+                }
+            });
+
+            const data = await getActionHistories(cleanedFilter);
+            setData(data);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    useEffect(() => {
+        fetchData({});
+        fetchActions();
+        fetchActuators();
+    }, [fetchActions, fetchActuators]);
+
+    const handleReset = () => {
+        reset();
+        fetchData({});
+    };
+
+    const handlePageChange = (page: number, size?: number) => {
+        setValue('page', page);
+        setValue('size', size);
+        const value = getValues();
+        fetchData(value);
+    };
+
+    const handleChangeSort = async (sorter: { field?: string; order?: string }) => {
+        const preValues = getValues();
+        
+        let sortOrder: 'ASC' | 'DESC' | undefined;
+        if (sorter.order === 'ascend') {
+            sortOrder = 'ASC';
+        } else if (sorter.order === 'descend') {
+            sortOrder = 'DESC';
+        } else {
+            sortOrder = undefined;
+        }
+
+        if (preValues.sortBy === sorter.field && preValues.sortOrder === sortOrder) {
+            return;
+        }
+
+        setValue('sortBy', sorter.field || '');
+        setValue('sortOrder', sortOrder);
+        setValue('page', 1);
+        const value = getValues();
+        fetchData(value);
+    }
+
+    const handleDownload = async () => {
+        // Implement download functionality
+        console.log('Downloading action history data...');
+    };
+
+    const columns: ColumnsType<IActionHistory> = [
+        {
+            title: 'Id',
+            dataIndex: 'id',
+            key: 'id',
+            render: (id: number) => id || 'N/A',
+            sorter: true,
+        },
+        {
+            title: 'Action',
+            dataIndex: 'action_id',
+            key: 'actionName',
+            render: (_, record) => record?.action?.name || 'Unknown Action',
+            sorter: true,
+        },
+        {
+            title: 'Actuator',
+            dataIndex: 'actuator_id',
+            key: 'actuatorName',
+            render: (_, record) => record?.actuator?.name || 'Unknown Actuator',
+            sorter: true,
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            render: (status: string) => {
+                let color = 'default';
+                if (status === 'success') {
+                    color = 'success';
+                } else if (status === 'failed') {
+                    color = 'error';
+                } else if (status === 'pending') {
+                    color = 'processing';
+                }
+                return <Tag color={color}>{status?.charAt(0).toUpperCase() + status?.slice(1) || 'N/A'}</Tag>;
+            },
+            sorter: true,
+        },
+        {
+            title: 'Timestamp',
+            dataIndex: 'timestamp',
+            key: 'timestamp',
+            render: (timestamp: string) => 
+                timestamp ? dayjs(timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A',
+            sorter: true,
+        },
+    ];
+
     return (
-        <div className="flex h-screen overflow-hidden">
-            {/* Sidebar */}
-            <div className="hidden md:flex md:flex-shrink-0">
-                <div className="flex flex-col w-64 bg-white border-r border-gray-200">
-                    <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
-                        <h1 className="text-xl font-bold text-blue-600">SensorDash</h1>
+        <div className="min-h-screen bg-gray-100 flex">
+            <div className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col">
+                <div className="h-16 flex items-center px-4 border-b border-gray-200">
+                    <div className="flex items-center">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                            <span className="text-white font-bold text-sm">IOT</span>
+                        </div>
+                        <h1 className="text-lg font-semibold text-gray-800">IOT Dashboard</h1>
                     </div>
-                    <div className="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
-                        <nav className="flex-1 space-y-2">
-                            <Link
-                                href="/"
-                                className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
-                            >
-                                <i className="fas fa-tachometer-alt mr-3" />
-                                Dashboard
-                            </Link>
-                            <Link
-                                href="/sensor-data"
-                                className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
-                            >
-                                <i className="fas fa-chart-line mr-3" />
-                                Data Sensor
-                            </Link>
-                            <Link
-                                href="/action-history"
-                                className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item active"
-                            >
-                                <i className="fas fa-history mr-3" />
-                                Action History
-                            </Link>
-                            <Link
-                                href="/profile"
-                                className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
-                            >
-                                <i className="fas fa-user mr-3" />
-                                Profile
-                            </Link>
-                        </nav>
-                    </div>
-                    <div className="p-4 border-t border-gray-200">
-                        <div className="flex items-center">
-                            <img
-                                className="w-10 h-10 rounded-full"
-                                src="https://randomuser.me/api/portraits/women/44.jpg"
-                                alt="User avatar"
-                            />
-                            <div className="ml-3">
-                                <p className="text-sm font-medium text-gray-700">Sarah Johnson</p>
-                                <p className="text-xs text-gray-500">Admin</p>
-                            </div>
+                </div>
+                <div className="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+                    <nav className="flex-1 space-y-2">
+                        <Link
+                            href="/"
+                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
+                        >
+                            <span className="fas fa-tachometer-alt mr-3"></span>
+                            {' '}Dashboard
+                        </Link>
+                        <Link
+                            href="/sensor-data"
+                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
+                        >
+                            <span className="fas fa-chart-line mr-3"></span>
+                            {' '}Data Sensor
+                        </Link>
+                        <Link
+                            href="/action-history"
+                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item active"
+                        >
+                            <span className="fas fa-history mr-3"></span>
+                            {' '}Action History
+                        </Link>
+                        <Link
+                            href="/profile"
+                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
+                        >
+                            <span className="fas fa-user mr-3"></span>
+                            {' '}Profile
+                        </Link>
+                    </nav>
+                </div>
+                <div className="p-4 border-t border-gray-200">
+                    <div className="flex items-center">
+                        <Image
+                            className="w-10 h-10 rounded-full"
+                            src="https://randomuser.me/api/portraits/women/44.jpg"
+                            alt="User avatar"
+                            width={40}
+                            height={40}
+                        />
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-700">Sarah Johnson</p>
+                            <p className="text-xs text-gray-500">Administrator</p>
                         </div>
                     </div>
                 </div>
             </div>
-            {/* Main content */}
-            <div className="flex flex-col flex-1 overflow-hidden">
-                {/* Top navigation */}
-                <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-gray-200">
-                    <div className="flex items-center">
-                        <button className="md:hidden text-gray-500 focus:outline-none">
-                            <i className="fas fa-bars" />
-                        </button>
-                        <h2 className="ml-4 text-lg font-medium text-gray-800">
-                            Action History
-                        </h2>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        <button className="p-1 text-gray-500 rounded-full focus:outline-none">
-                            <i className="fas fa-bell" />
-                        </button>
-                        <button className="p-1 text-gray-500 rounded-full focus:outline-none">
-                            <i className="fas fa-cog" />
-                        </button>
-                    </div>
+
+            <div className="flex-1 flex flex-col">
+                <header className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6">
+                    <h2 className="text-xl font-semibold text-gray-800">Action History</h2>
+                    <Button 
+                        type="primary" 
+                        icon={<DownloadOutlined />} 
+                        size="middle"
+                        onClick={handleDownload}
+                    >
+                        Export Data
+                    </Button>
                 </header>
-                {/* Main content area */}
-                <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                    {/* Page Header */}
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
+
+                <main className="flex-1 p-6 overflow-auto">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+                        <form onSubmit={handleSubmit(fetchData)} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label htmlFor="queryName" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Search
+                                    </label>
+                                    <Controller
+                                        name="queryName"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Input
+                                                {...field}
+                                                id="queryName"
+                                                placeholder="Search actions..."
+                                                prefix={<SearchOutlined />}
+                                            />
+                                        )}
+                                    />
+                                    {errors.queryName && (
+                                        <span className="text-red-500 text-sm">{errors.queryName.message}</span>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="actionIds" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Actions
+                                    </label>
+                                    <Controller
+                                        name="actionIds"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select
+                                                {...field}
+                                                id="actionIds"
+                                                mode="multiple"
+                                                placeholder="Select actions"
+                                                style={{ width: '100%' }}
+                                                options={actions.map(action => ({
+                                                    value: action.id,
+                                                    label: action.name
+                                                }))}
+                                            />
+                                        )}
+                                    />
+                                    {errors.actionIds && (
+                                        <span className="text-red-500 text-sm">{errors.actionIds.message}</span>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="actuatorIds" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Actuators
+                                    </label>
+                                    <Controller
+                                        name="actuatorIds"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select
+                                                {...field}
+                                                id="actuatorIds"
+                                                mode="multiple"
+                                                placeholder="Select actuators"
+                                                style={{ width: '100%' }}
+                                                options={actuators.map(actuator => ({
+                                                    value: actuator.id,
+                                                    label: actuator.name
+                                                }))}
+                                            />
+                                        )}
+                                    />
+                                    {errors.actuatorIds && (
+                                        <span className="text-red-500 text-sm">{errors.actuatorIds.message}</span>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Status
+                                    </label>
+                                    <Controller
+                                        name="status"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select
+                                                {...field}
+                                                id="status"
+                                                placeholder="Select status"
+                                                style={{ width: '100%' }}
+                                                allowClear
+                                                options={[
+                                                    { value: 'success', label: 'Success' },
+                                                    { value: 'failed', label: 'Failed' },
+                                                    { value: 'pending', label: 'Pending' }
+                                                ]}
+                                            />
+                                        )}
+                                    />
+                                    {errors.status && (
+                                        <span className="text-red-500 text-sm">{errors.status.message}</span>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
+                                        Start Date
+                                    </label>
+                                    <Controller
+                                        name="startDate"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <DatePicker
+                                                {...field}
+                                                id="startDate"
+                                                showTime
+                                                placeholder="Select start date"
+                                                style={{ width: '100%' }}
+                                                value={field.value ? dayjs(field.value) : null}
+                                                onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
+                                            />
+                                        )}
+                                    />
+                                    {errors.startDate && (
+                                        <span className="text-red-500 text-sm">{errors.startDate.message}</span>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
+                                        End Date
+                                    </label>
+                                    <Controller
+                                        name="endDate"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <DatePicker
+                                                {...field}
+                                                id="endDate"
+                                                showTime
+                                                placeholder="Select end date"
+                                                style={{ width: '100%' }}
+                                                value={field.value ? dayjs(field.value) : null}
+                                                onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
+                                            />
+                                        )}
+                                    />
+                                    {errors.endDate && (
+                                        <span className="text-red-500 text-sm">{errors.endDate.message}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 pt-4">
+                                <Button type="primary" htmlType="submit" loading={loading}>
+                                    Apply Filters
+                                </Button>
+                                <Button type="default" onClick={handleReset}>
+                                    Reset
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="p-6 border-b border-gray-200">
                             <h3 className="text-lg font-medium text-gray-900">Action History</h3>
-                            <p className="text-sm text-gray-500">
-                                Track and manage all system actions
+                            <p className="text-sm text-gray-500 mt-1">
+                                Total: {data.pagination.total} records
                             </p>
                         </div>
-                        <div>
-                            <button className="ant-btn ant-btn-primary">
-                                <i className="fas fa-download mr-2" /> Export
-                            </button>
-                        </div>
-                    </div>
-                    {/* Filters Section */}
-                    <div className="bg-white p-6 rounded-xl card-shadow mb-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                            {/* Search Input */}
-                            <div className="lg:col-span-1">
-                                <label
-                                    htmlFor="search-actions"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                >
-                                    Search
-                                </label>
-                                <div className="ant-input-affix-wrapper">
-                                    <span className="ant-input-prefix">
-                                        <i className="fas fa-search text-gray-400" />
-                                    </span>
-                                    <input
-                                        id="search-actions"
-                                        className="ant-input"
-                                        placeholder="Search actions..."
-                                        type="text"
-                                    />
-                                </div>
-                            </div>
-                            {/* Date Range */}
-                            <div className="lg:col-span-1">
-                                <label
-                                    htmlFor="date-start"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                >
-                                    Date Range
-                                </label>
-                                <div className="flex space-x-2">
-                                    <div className="relative flex-1">
-                                        <input
-                                            id="date-start"
-                                            type="date"
-                                            className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                                            defaultValue="2025-08-01"
-                                        />
-                                        <span className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-500">
-                                            From
-                                        </span>
-                                    </div>
-                                    <div className="relative flex-1">
-                                        <input
-                                            id="date-end"
-                                            type="date"
-                                            className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                                            defaultValue="2025-08-29"
-                                        />
-                                        <span className="absolute -top-2 left-2 bg-white px-1 text-xs text-gray-500">
-                                            To
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Action Type Select */}
-                            <div className="lg:col-span-1">
-                                <label
-                                    htmlFor="action-type"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                >
-                                    Action Type
-                                </label>
-                                <select
-                                    id="action-type"
-                                    className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                >
-                                    <option>All Action Types</option>
-                                    <option>Device Control</option>
-                                    <option>System Settings</option>
-                                    <option>Security</option>
-                                    <option>Automation</option>
-                                </select>
-                            </div>
-                            {/* Status Filter */}
-                            <div className="lg:col-span-1">
-                                <label
-                                    htmlFor="status-filter"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                >
-                                    Status
-                                </label>
-                                <select
-                                    id="status-filter"
-                                    className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                >
-                                    <option>All Status</option>
-                                    <option>Success</option>
-                                    <option>Failed</option>
-                                    <option>Pending</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                            <div className="text-sm text-gray-500">
-                                Filter actions by search terms, date, type, and status
-                            </div>
-                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                                <button className="ant-btn w-full sm:w-auto">
-                                    <i className="fas fa-sync-alt mr-2" /> Reset Filters
-                                </button>
-                                <button className="ant-btn ant-btn-primary w-full sm:w-auto">
-                                    <i className="fas fa-filter mr-2" /> Apply Filters
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {/* Table Section */}
-                    <div className="bg-white p-6 rounded-xl card-shadow">
-                        <div className="ant-table">
-                            <table className="w-full">
-                                <thead className="ant-table-thead">
-                                    <tr>
-                                        <th className="ant-table-cell text-left">ID</th>
-                                        <th className="ant-table-cell text-left">Device Name</th>
-                                        <th className="ant-table-cell text-left">Action Name</th>
-                                        <th className="ant-table-cell text-left">Timestamp</th>
-                                        <th className="ant-table-cell text-left">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="ant-table-tbody">
-                                    {/* Row 1 */}
-                                    <tr className="ant-table-row">
-                                        <td className="ant-table-cell">1</td>
-                                        <td className="ant-table-cell">LED</td>
-                                        <td className="ant-table-cell">Turn on Living Room Light</td>
-                                        <td className="ant-table-cell">2023-06-15 09:30:22</td>
-                                        <td className="ant-table-cell">
-                                            <span className="ant-tag ant-tag-success">Success</span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 2 */}
-                                    <tr className="ant-table-row">
-                                        <td className="ant-table-cell">2</td>
-                                        <td className="ant-table-cell">Air Condition</td>
-                                        <td className="ant-table-cell">
-                                            Adjust Thermostat Temperature
-                                        </td>
-                                        <td className="ant-table-cell">2023-06-15 10:15:45</td>
-                                        <td className="ant-table-cell">
-                                            <span className="ant-tag ant-tag-success">Success</span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 3 */}
-                                    <tr className="ant-table-row">
-                                        <td className="ant-table-cell">3</td>
-                                        <td className="ant-table-cell">Fan</td>
-                                        <td className="ant-table-cell">Lock Front Door</td>
-                                        <td className="ant-table-cell">2023-06-15 11:02:18</td>
-                                        <td className="ant-table-cell">
-                                            <span className="ant-tag ant-tag-error">Failed</span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 4 */}
-                                    <tr className="ant-table-row">
-                                        <td className="ant-table-cell">4</td>
-                                        <td className="ant-table-cell">LED</td>
-                                        <td className="ant-table-cell">Start Coffee Maker</td>
-                                        <td className="ant-table-cell">2023-06-15 12:45:30</td>
-                                        <td className="ant-table-cell">
-                                            <span className="ant-tag ant-tag-success">Success</span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 5 */}
-                                    <tr className="ant-table-row">
-                                        <td className="ant-table-cell">5</td>
-                                        <td className="ant-table-cell">Air Condition</td>
-                                        <td className="ant-table-cell">Close Garage Door</td>
-                                        <td className="ant-table-cell">2023-06-15 15:20:11</td>
-                                        <td className="ant-table-cell">
-                                            <span className="ant-tag ant-tag-processing">Pending</span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 6 */}
-                                    <tr className="ant-table-row">
-                                        <td className="ant-table-cell">6</td>
-                                        <td className="ant-table-cell">Fan</td>
-                                        <td className="ant-table-cell">Activate Security System</td>
-                                        <td className="ant-table-cell">2023-06-15 18:05:37</td>
-                                        <td className="ant-table-cell">
-                                            <span className="ant-tag ant-tag-success">Success</span>
-                                        </td>
-                                    </tr>
-                                    {/* Row 7 */}
-                                    <tr className="ant-table-row">
-                                        <td className="ant-table-cell">7</td>
-                                        <td className="ant-table-cell">LED</td>
-                                        <td className="ant-table-cell">Turn off All Lights</td>
-                                        <td className="ant-table-cell">2023-06-15 22:30:08</td>
-                                        <td className="ant-table-cell">
-                                            <span className="ant-tag ant-tag-error">Failed</span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        {/* Pagination */}
-                        <div className="flex justify-between items-center mt-6">
-                            <div className="text-gray-500 text-sm">
-                                Showing 1 to 7 of 24 entries
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <button className="ant-btn" disabled="">
-                                    <i className="fas fa-chevron-left" />
-                                </button>
-                                <span className="px-3 py-1 bg-blue-500 text-white rounded">1</span>
-                                <span className="px-3 py-1 text-gray-500">/ 4</span>
-                                <button className="ant-btn">
-                                    <i className="fas fa-chevron-right" />
-                                </button>
-                            </div>
+
+                        <div className='p-5'>
+                            <Table
+                                columns={columns}
+                                dataSource={data.data}
+                                rowKey={(record) => `${record.id}-${record.timestamp}`}
+                                loading={loading}
+                                pagination={{
+                                    current: data.pagination.page ?? 1,
+                                    pageSize: data.pagination.size ?? 10,
+                                    total: data.pagination.total ?? 0,
+                                    onChange: handlePageChange,
+                                }}
+                                onChange={(__, _, sorter) => {
+                                    if (sorter && !Array.isArray(sorter)) {
+                                        handleChangeSort({
+                                            field: sorter.field as string,
+                                            order: sorter.order || undefined
+                                        });
+                                    }
+                                }}
+                            />
                         </div>
                     </div>
                 </main>
             </div>
         </div>
-    )
+    );
 }
 
-export default ActionHistoryPage
+export default ActionHistoryPage;

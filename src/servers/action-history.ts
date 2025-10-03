@@ -1,0 +1,21 @@
+import { IPaginatedResponse } from "@/types";
+import { axiosInstance } from "."
+import { IActionHistory } from "@/types/action-history";
+
+interface IActionHistoryParams {
+    page?: number;
+    size?: number;
+    actuatorIds?: string[];
+    actionIds?: string[];
+    status?: string;
+    queryName?: string;
+    startDate?: number;
+    endDate?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+}
+
+export const getActionHistories = async (p: IActionHistoryParams = {}) => {
+    const { data } = await axiosInstance.post<IPaginatedResponse<IActionHistory>>('/action-histories/search', p);
+    return data;
+}
