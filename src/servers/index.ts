@@ -29,8 +29,9 @@ interface ISensorDataParams {
     endDate?: number;
     startValue?: number;
     endValue?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
 }
-
 
 
 export const getSensorData = async (params: ISensorDataParams = {}) => {

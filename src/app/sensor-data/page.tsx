@@ -9,21 +9,30 @@ import dayjs from 'dayjs';
 import { useEffect, useState, useCallback } from 'react';
 import { IPaginatedResponse, ISensorData, ISensor } from '@/types';
 import { getSensorData } from '@/servers';
+import { getAllSensors } from '@/servers/sensor';
+import { UNITS } from '@/constants';
+import { ColumnsType } from 'antd/es/table';
 
 type FilterFormData = {
     sensorIds?: number[];
+    unit?: string;
     startValue?: number;
     endValue?: number;
     startDate?: number;
     endDate?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
 };
 
 const filterSchema = z.object({
     sensorIds: z.array(z.number()).optional(),
+    unit: z.string().optional(),
     startValue: z.number().optional(),
     endValue: z.number().optional(),
     startDate: z.number().optional(),
     endDate: z.number().optional(),
+    sortBy: z.string().optional(),
+    sortOrder: z.enum(['ASC', 'DESC']).optional(),
 });
 
 export default function SensorDataPage() {
@@ -42,9 +51,13 @@ export default function SensorDataPage() {
     const [pageSize, setPageSize] = useState(10);
     const [currentFilters, setCurrentFilters] = useState<FilterFormData>({});
 
-    const { control, handleSubmit, reset, formState: { errors } } = useForm<FilterFormData>({
+    console.log('currentPage', currentPage)
+
+    const { control, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm<FilterFormData>({
         resolver: zodResolver(filterSchema),
     });
+
+    console.log('watch', watch());
 
     const fetchData = useCallback(async (filters: FilterFormData = {}, page = 1, size = 10) => {
         setLoading(true);
@@ -66,12 +79,9 @@ export default function SensorDataPage() {
 
     const fetchSensors = useCallback(async () => {
         try {
-            const mockSensors: ISensor[] = [
-                { id: 1, name: 'Temperature Sensor 1' },
-                { id: 2, name: 'Humidity Sensor 1' },
-                { id: 3, name: 'Pressure Sensor 1' },
-            ];
-            setSensors(mockSensors);
+            const sensors = await getAllSensors();
+
+            setSensors(sensors);
         } catch (error) {
             console.error('Error fetching sensors:', error);
         }
@@ -83,10 +93,10 @@ export default function SensorDataPage() {
     }, [fetchData, fetchSensors]);
 
     const onSubmit = async (formData: FilterFormData) => {
-        console.log('Filter data (DTO format):', formData);
         setCurrentFilters(formData);
         setCurrentPage(1);
         setLoading(true);
+        console.log('formData', formData)
         try {
             const params = {
                 ...formData,
@@ -118,24 +128,41 @@ export default function SensorDataPage() {
         fetchData(currentFilters, page, size || pageSize);
     };
 
-    const columns = [
+    const handleChangeSort = async ({ field, order }: any) => {
+        console.log('field', field)
+        setValue('sortBy', field);
+        setValue('sortOrder', order === 'ascend' ? 'ASC' : order === 'descend' ? 'DESC' : undefined);
+        await onSubmit(watch());
+    }
+
+    const columns: ColumnsType<ISensorData> = [
         {
-            title: 'Sensor ID',
-            dataIndex: ['sensor', 'name'],
+            title: 'Id',
+            dataIndex: 'id',
+            key: 'id',
+            render: (id: number) => id || 'N/A',
+            sorter: true,
+        },
+        {
+            title: 'Sensor',
+            dataIndex: 'sensor_id',
             key: 'sensorName',
-            render: (name: string) => name || 'Unknown Sensor',
+            render: (_, record) => record?.sensor?.name || 'Unknown Sensor',
+            sorter: true,
         },
         {
             title: 'Value',
             dataIndex: 'value',
             key: 'value',
             render: (value: number) => value?.toFixed(2) || 'N/A',
+            sorter: true,
         },
         {
             title: 'Unit',
             dataIndex: 'unit',
             key: 'unit',
             render: (unit: string) => unit || '°C',
+            sorter: true,
         },
         {
             title: 'Status',
@@ -154,6 +181,7 @@ export default function SensorDataPage() {
             key: 'timestamp',
             render: (timestamp: number) => 
                 timestamp ? dayjs(timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A',
+            sorter: true,
         },
     ];
 
@@ -234,7 +262,7 @@ export default function SensorDataPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Sensor IDs
+                                        Sensors
                                     </label>
                                     <Controller
                                         name="sensorIds"
@@ -254,6 +282,31 @@ export default function SensorDataPage() {
                                     />
                                     {errors.sensorIds && (
                                         <span className="text-red-500 text-sm">{errors.sensorIds.message}</span>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Unit
+                                    </label>
+                                    <Controller
+                                        name="unit"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select
+                                                {...field}
+                                                placeholder="Select unit"
+                                                style={{ width: '100%' }}
+                                                allowClear
+                                                options={Object.values(UNITS).map(unit => ({
+                                                    value: unit,
+                                                    label: unit
+                                                }))}
+                                            />
+                                        )}
+                                    />
+                                    {errors.unit && (
+                                        <span className="text-red-500 text-sm">{errors.unit.message}</span>
                                     )}
                                 </div>
 
@@ -363,23 +416,26 @@ export default function SensorDataPage() {
                             </p>
                         </div>
 
-                        <Table
-                            columns={columns}
-                            dataSource={data.data}
-                            rowKey={(record) => `${record.sensor.id}-${record.timestamp}`}
-                            loading={loading}
-                            pagination={{
-                                current: currentPage,
-                                pageSize: pageSize,
-                                total: data.pagination.total,
-                                showSizeChanger: true,
-                                showQuickJumper: true,
-                                showTotal: (total, range) =>
-                                    `${range[0]}-${range[1]} of ${total} items`,
-                                onChange: handlePageChange,
-                                onShowSizeChange: handlePageChange,
-                            }}
-                        />
+                        <div className='p-5'>
+                            <Table
+                                columns={columns}
+                                dataSource={data.data}
+                                rowKey={(record) => `${record.sensor.id}-${record.timestamp}`}
+                                loading={loading}
+                                pagination={{
+                                    current: currentPage,
+                                    pageSize: pageSize,
+                                    total: data.pagination.total,
+                                    showSizeChanger: true,
+                                    showQuickJumper: true,
+                                    onChange: handlePageChange,
+                                    onShowSizeChange: handlePageChange,
+                                }}
+                                onChange={(__, _, sorter) => {
+                                    handleChangeSort(sorter);
+                                }}
+                            />
+                        </div>
                     </div>
                 </main>
             </div>
