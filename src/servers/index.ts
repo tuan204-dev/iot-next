@@ -20,10 +20,10 @@ export const triggerDevice = async (params: ITriggerDeviceParams) => {
     return data;
 }
 
-interface ISensorDataParams {
+export interface ISensorDataParams {
     page?: number;
     size?: number;
-    sensorIds?: string[];
+    sensorIds?: number[];
     unit?: string;
     startDate?: number;
     endDate?: number;

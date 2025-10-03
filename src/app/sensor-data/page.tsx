@@ -1,17 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
-import Link from 'next/link';
-import { InputNumber, Select, Button, Table, Tag, DatePicker } from 'antd';
-import { DownloadOutlined } from '@ant-design/icons';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import dayjs from 'dayjs';
-import { useEffect, useState, useCallback } from 'react';
-import { IPaginatedResponse, ISensorData, ISensor } from '@/types';
+import { UNITS } from '@/constants';
 import { getSensorData } from '@/servers';
 import { getAllSensors } from '@/servers/sensor';
-import { UNITS } from '@/constants';
+import { downloadSensorDataCSV } from '@/servers/sensor-data';
+import { IPaginatedResponse, ISensor, ISensorData } from '@/types';
+import { DownloadOutlined } from '@ant-design/icons';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button, DatePicker, InputNumber, Select, Table, Tag } from 'antd';
 import { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 type FilterFormData = {
     sensorIds?: number[];
@@ -22,6 +24,8 @@ type FilterFormData = {
     endDate?: number;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
+    page?: number;
+    size?: number;
 };
 
 const filterSchema = z.object({
@@ -33,6 +37,8 @@ const filterSchema = z.object({
     endDate: z.number().optional(),
     sortBy: z.string().optional(),
     sortOrder: z.enum(['ASC', 'DESC']).optional(),
+    page: z.number().min(1).default(1),
+    size: z.number().min(1).max(100).default(10),
 });
 
 export default function SensorDataPage() {
@@ -47,35 +53,10 @@ export default function SensorDataPage() {
     });
     const [loading, setLoading] = useState(false);
     const [sensors, setSensors] = useState<ISensor[]>([]);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
-    const [currentFilters, setCurrentFilters] = useState<FilterFormData>({});
 
-    console.log('currentPage', currentPage)
-
-    const { control, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm<FilterFormData>({
+    const { control, handleSubmit, reset, formState: { errors }, watch, setValue, getValues } = useForm<FilterFormData>({
         resolver: zodResolver(filterSchema),
     });
-
-    console.log('watch', watch());
-
-    const fetchData = useCallback(async (filters: FilterFormData = {}, page = 1, size = 10) => {
-        setLoading(true);
-        try {
-            const params = {
-                ...filters,
-                sensorIds: filters.sensorIds?.map(id => id.toString()),
-                page,
-                size,
-            };
-            const res = await getSensorData(params);
-            setData(res);
-        } catch (error) {
-            console.error('Error fetching sensor data:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
 
     const fetchSensors = useCallback(async () => {
         try {
@@ -87,52 +68,65 @@ export default function SensorDataPage() {
         }
     }, []);
 
-    useEffect(() => {
-        fetchData();
-        fetchSensors();
-    }, [fetchData, fetchSensors]);
-
-    const onSubmit = async (formData: FilterFormData) => {
-        setCurrentFilters(formData);
-        setCurrentPage(1);
+    const fetchData = async (filter: FilterFormData) => {
         setLoading(true);
-        console.log('formData', formData)
         try {
-            const params = {
-                ...formData,
-                sensorIds: formData.sensorIds?.map(id => id.toString()),
-                page: 1,
-                size: pageSize
-            };
-            const res = await getSensorData(params);
-            setData(res);
-        } catch (error) {
-            console.error('Error filtering sensor data:', error);
+            const cleanedFilter = { ...filter };
+            Object.keys(cleanedFilter).forEach(key => {
+                if (cleanedFilter[key as keyof FilterFormData] === undefined || cleanedFilter[key as keyof FilterFormData] === null) {
+                    delete cleanedFilter[key as keyof FilterFormData];
+                }
+            });
+
+            const data = await getSensorData(cleanedFilter);
+            setData(data);
         } finally {
             setLoading(false);
         }
-    };
+    }
+
+    useEffect(() => {
+        fetchData({});
+        fetchSensors();
+    }, []);
 
     const handleReset = () => {
         reset();
-        setCurrentFilters({});
-        setCurrentPage(1);
-        fetchData({}, 1, pageSize);
+        fetchData({});
     };
 
     const handlePageChange = (page: number, size?: number) => {
-        setCurrentPage(page);
-        if (size && size !== pageSize) {
-            setPageSize(size);
-        }
-        fetchData(currentFilters, page, size || pageSize);
+        setValue('page', page);
+        setValue('size', size);
+        const value = getValues();
+        fetchData(value);
     };
 
     const handleChangeSort = async ({ field, order }: any) => {
-        console.log('field', field)
+        const preValues = getValues();
+
+        if (preValues.sortBy === field && preValues.sortOrder === (order === 'ascend' ? 'ASC' : order === 'descend' ? 'DESC' : undefined)) {
+            return;
+        }
+
         setValue('sortBy', field);
         setValue('sortOrder', order === 'ascend' ? 'ASC' : order === 'descend' ? 'DESC' : undefined);
-        await onSubmit(watch());
+        setValue('page', 1);
+        const value = getValues();
+        fetchData(value);
+    }
+
+    const handleDownload = async () => {
+        const value = getValues();
+        const blob = await downloadSensorDataCSV(value);
+        const url = window.URL.createObjectURL(new Blob([blob]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'sensor_data.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
     }
 
     const columns: ColumnsType<ISensorData> = [
@@ -250,6 +244,7 @@ export default function SensorDataPage() {
                         type="primary" 
                         icon={<DownloadOutlined />} 
                         size="middle"
+                        onClick={handleDownload}
                     >
                         Export Data
                     </Button>
@@ -258,7 +253,7 @@ export default function SensorDataPage() {
                 <main className="flex-1 p-6 overflow-auto">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                         <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
-                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <form onSubmit={handleSubmit(fetchData)} className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -423,13 +418,10 @@ export default function SensorDataPage() {
                                 rowKey={(record) => `${record.sensor.id}-${record.timestamp}`}
                                 loading={loading}
                                 pagination={{
-                                    current: currentPage,
-                                    pageSize: pageSize,
-                                    total: data.pagination.total,
-                                    showSizeChanger: true,
-                                    showQuickJumper: true,
+                                    current: data.pagination.page ?? 1,
+                                    pageSize: data.pagination.size ?? 10,
+                                    total: data.pagination.total ?? 0,
                                     onChange: handlePageChange,
-                                    onShowSizeChange: handlePageChange,
                                 }}
                                 onChange={(__, _, sorter) => {
                                     handleChangeSort(sorter);
