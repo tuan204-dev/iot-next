@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
-import { UNITS } from '@/constants';
+import { UNITS, SENSOR_LIMITS } from '@/constants';
 import { getSensorData } from '@/servers';
 import { getAllSensors } from '@/servers/sensor';
 import { downloadSensorDataCSV } from '@/servers/sensor-data';
@@ -10,7 +10,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, DatePicker, InputNumber, Select, Table, Tag } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -162,8 +161,25 @@ export default function SensorDataPage() {
             title: 'Status',
             dataIndex: 'value',
             key: 'status',
-            render: (value: number) => {
-                const isWarning = value > 30 || value < 10;
+            render: (value: number, record: ISensorData) => {
+                let isWarning = false;
+                
+                // Kiểm tra cảnh báo dựa trên unit của sensor
+                switch (record.unit) {
+                    case '°C': // Temperature
+                        isWarning = value < SENSOR_LIMITS.TEMPERATURE.MIN || value > SENSOR_LIMITS.TEMPERATURE.MAX;
+                        break;
+                    case '%': // Humidity
+                        isWarning = value < SENSOR_LIMITS.HUMIDITY.MIN || value > SENSOR_LIMITS.HUMIDITY.MAX;
+                        break;
+                    case 'lx': // Light
+                        isWarning = value < SENSOR_LIMITS.LIGHT.MIN || value > SENSOR_LIMITS.LIGHT.MAX;
+                        break;
+                    default:
+                        // Fallback cho các unit khác
+                        isWarning = value > 30 || value < 10;
+                }
+                
                 const statusText = isWarning ? 'Warning' : 'Normal';
                 const color = isWarning ? 'warning' : 'success';
                 return <Tag color={color}>{statusText}</Tag>;
@@ -173,264 +189,211 @@ export default function SensorDataPage() {
             title: 'Timestamp',
             dataIndex: 'timestamp',
             key: 'timestamp',
-            render: (timestamp: number) => 
+            render: (timestamp: number) =>
                 timestamp ? dayjs(timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A',
             sorter: true,
         },
     ];
 
+    const onSubmit = (data: FilterFormData) => {
+        data.page = 1;
+        fetchData(data);
+    }
+
     return (
-        <div className="min-h-screen bg-gray-100 flex">
-            <div className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col">
-                <div className="h-16 flex items-center px-4 border-b border-gray-200">
-                    <div className="flex items-center">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                            <span className="text-white font-bold text-sm">IOT</span>
+        <div className="flex-1 flex flex-col">
+            <header className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6">
+                <h2 className="text-xl font-semibold text-gray-800">Sensor Data</h2>
+                <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    size="middle"
+                    onClick={handleDownload}
+                >
+                    Export Data
+                </Button>
+            </header>
+
+            <main className="flex-1 p-6 overflow-auto bg-gray-50">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+                    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Sensors
+                                </label>
+                                <Controller
+                                    name="sensorIds"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            {...field}
+                                            mode="multiple"
+                                            placeholder="Select sensors"
+                                            style={{ width: '100%' }}
+                                            options={sensors.map(sensor => ({
+                                                value: sensor.id,
+                                                label: sensor.name
+                                            }))}
+                                        />
+                                    )}
+                                />
+                                {errors.sensorIds && (
+                                    <span className="text-red-500 text-sm">{errors.sensorIds.message}</span>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Unit
+                                </label>
+                                <Controller
+                                    name="unit"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            {...field}
+                                            placeholder="Select unit"
+                                            style={{ width: '100%' }}
+                                            allowClear
+                                            options={Object.values(UNITS).map(unit => ({
+                                                value: unit,
+                                                label: unit
+                                            }))}
+                                        />
+                                    )}
+                                />
+                                {errors.unit && (
+                                    <span className="text-red-500 text-sm">{errors.unit.message}</span>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Start Value
+                                </label>
+                                <Controller
+                                    name="startValue"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <InputNumber
+                                            {...field}
+                                            placeholder="Enter minimum value"
+                                            style={{ width: '100%' }}
+                                        />
+                                    )}
+                                />
+                                {errors.startValue && (
+                                    <span className="text-red-500 text-sm">{errors.startValue.message}</span>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    End Value
+                                </label>
+                                <Controller
+                                    name="endValue"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <InputNumber
+                                            {...field}
+                                            placeholder="Enter maximum value"
+                                            style={{ width: '100%' }}
+                                        />
+                                    )}
+                                />
+                                {errors.endValue && (
+                                    <span className="text-red-500 text-sm">{errors.endValue.message}</span>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Start Date
+                                </label>
+                                <Controller
+                                    name="startDate"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <DatePicker
+                                            {...field}
+                                            showTime
+                                            placeholder="Select start date"
+                                            style={{ width: '100%' }}
+                                            value={field.value ? dayjs(field.value) : null}
+                                            onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
+                                        />
+                                    )}
+                                />
+                                {errors.startDate && (
+                                    <span className="text-red-500 text-sm">{errors.startDate.message}</span>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    End Date
+                                </label>
+                                <Controller
+                                    name="endDate"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <DatePicker
+                                            {...field}
+                                            showTime
+                                            placeholder="Select end date"
+                                            style={{ width: '100%' }}
+                                            value={field.value ? dayjs(field.value) : null}
+                                            onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
+                                        />
+                                    )}
+                                />
+                                {errors.endDate && (
+                                    <span className="text-red-500 text-sm">{errors.endDate.message}</span>
+                                )}
+                            </div>
                         </div>
-                        <h1 className="text-lg font-semibold text-gray-800">IOT Dashboard</h1>
+
+                        <div className="flex gap-4 pt-4">
+                            <Button type="primary" htmlType="submit" loading={loading}>
+                                Apply Filters
+                            </Button>
+                            <Button type="default" onClick={handleReset}>
+                                Reset
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="p-6 border-b border-gray-200">
+                        <h3 className="text-lg font-medium text-gray-900">Sensor Data</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Total: {data.pagination.total} records
+                        </p>
                     </div>
-                </div>
-                <div className="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
-                    <nav className="flex-1 space-y-2">
-                        <Link
-                            href="/"
-                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
-                        >
-                            <i className="fas fa-tachometer-alt mr-3" />
-                            Dashboard
-                        </Link>
-                        <Link
-                            href="/sensor-data"
-                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item active"
-                        >
-                            <i className="fas fa-chart-line mr-3" />
-                            Data Sensor
-                        </Link>
-                        <Link
-                            href="/action-history"
-                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
-                        >
-                            <i className="fas fa-history mr-3" />
-                            Action History
-                        </Link>
-                        <Link
-                            href="/profile"
-                            className="flex items-center px-4 py-3 text-sm font-medium rounded-lg sidebar-item"
-                        >
-                            <i className="fas fa-user mr-3" />
-                            Profile
-                        </Link>
-                    </nav>
-                </div>
-                <div className="p-4 border-t border-gray-200">
-                    <div className="flex items-center">
-                        <img
-                            className="w-10 h-10 rounded-full"
-                            src="https://randomuser.me/api/portraits/women/44.jpg"
-                            alt="User avatar"
+
+                    <div className='p-5'>
+                        <Table
+                            columns={columns}
+                            dataSource={data.data}
+                            rowKey={(record) => `${record.sensor.id}-${record.timestamp}`}
+                            loading={loading}
+                            pagination={{
+                                current: data.pagination.page ?? 1,
+                                pageSize: data.pagination.size ?? 10,
+                                total: data.pagination.total ?? 0,
+                                onChange: handlePageChange,
+                            }}
+                            onChange={(__, _, sorter) => {
+                                handleChangeSort(sorter);
+                            }}
                         />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-700">Sarah Johnson</p>
-                            <p className="text-xs text-gray-500">Administrator</p>
-                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div className="flex-1 flex flex-col">
-                <header className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6">
-                    <h2 className="text-xl font-semibold text-gray-800">Sensor Data</h2>
-                    <Button 
-                        type="primary" 
-                        icon={<DownloadOutlined />} 
-                        size="middle"
-                        onClick={handleDownload}
-                    >
-                        Export Data
-                    </Button>
-                </header>
-
-                <main className="flex-1 p-6 overflow-auto">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
-                        <form onSubmit={handleSubmit(fetchData)} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Sensors
-                                    </label>
-                                    <Controller
-                                        name="sensorIds"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select
-                                                {...field}
-                                                mode="multiple"
-                                                placeholder="Select sensors"
-                                                style={{ width: '100%' }}
-                                                options={sensors.map(sensor => ({
-                                                    value: sensor.id,
-                                                    label: sensor.name
-                                                }))}
-                                            />
-                                        )}
-                                    />
-                                    {errors.sensorIds && (
-                                        <span className="text-red-500 text-sm">{errors.sensorIds.message}</span>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Unit
-                                    </label>
-                                    <Controller
-                                        name="unit"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select
-                                                {...field}
-                                                placeholder="Select unit"
-                                                style={{ width: '100%' }}
-                                                allowClear
-                                                options={Object.values(UNITS).map(unit => ({
-                                                    value: unit,
-                                                    label: unit
-                                                }))}
-                                            />
-                                        )}
-                                    />
-                                    {errors.unit && (
-                                        <span className="text-red-500 text-sm">{errors.unit.message}</span>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Start Value
-                                    </label>
-                                    <Controller
-                                        name="startValue"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <InputNumber
-                                                {...field}
-                                                placeholder="Enter minimum value"
-                                                style={{ width: '100%' }}
-                                            />
-                                        )}
-                                    />
-                                    {errors.startValue && (
-                                        <span className="text-red-500 text-sm">{errors.startValue.message}</span>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        End Value
-                                    </label>
-                                    <Controller
-                                        name="endValue"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <InputNumber
-                                                {...field}
-                                                placeholder="Enter maximum value"
-                                                style={{ width: '100%' }}
-                                            />
-                                        )}
-                                    />
-                                    {errors.endValue && (
-                                        <span className="text-red-500 text-sm">{errors.endValue.message}</span>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Start Date
-                                    </label>
-                                    <Controller
-                                        name="startDate"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <DatePicker
-                                                {...field}
-                                                showTime
-                                                placeholder="Select start date"
-                                                style={{ width: '100%' }}
-                                                value={field.value ? dayjs(field.value) : null}
-                                                onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
-                                            />
-                                        )}
-                                    />
-                                    {errors.startDate && (
-                                        <span className="text-red-500 text-sm">{errors.startDate.message}</span>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        End Date
-                                    </label>
-                                    <Controller
-                                        name="endDate"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <DatePicker
-                                                {...field}
-                                                showTime
-                                                placeholder="Select end date"
-                                                style={{ width: '100%' }}
-                                                value={field.value ? dayjs(field.value) : null}
-                                                onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
-                                            />
-                                        )}
-                                    />
-                                    {errors.endDate && (
-                                        <span className="text-red-500 text-sm">{errors.endDate.message}</span>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4 pt-4">
-                                <Button type="primary" htmlType="submit" loading={loading}>
-                                    Apply Filters
-                                </Button>
-                                <Button type="default" onClick={handleReset}>
-                                    Reset
-                                </Button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                        <div className="p-6 border-b border-gray-200">
-                            <h3 className="text-lg font-medium text-gray-900">Sensor Data</h3>
-                            <p className="text-sm text-gray-500 mt-1">
-                                Total: {data.pagination.total} records
-                            </p>
-                        </div>
-
-                        <div className='p-5'>
-                            <Table
-                                columns={columns}
-                                dataSource={data.data}
-                                rowKey={(record) => `${record.sensor.id}-${record.timestamp}`}
-                                loading={loading}
-                                pagination={{
-                                    current: data.pagination.page ?? 1,
-                                    pageSize: data.pagination.size ?? 10,
-                                    total: data.pagination.total ?? 0,
-                                    onChange: handlePageChange,
-                                }}
-                                onChange={(__, _, sorter) => {
-                                    handleChangeSort(sorter);
-                                }}
-                            />
-                        </div>
-                    </div>
-                </main>
-            </div>
+            </main>
         </div>
     );
 }

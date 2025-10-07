@@ -6,3 +6,8 @@ export const getAllActions = async () => {
 
     return data;
 }
+
+export const getLastActions = async () => {
+    const { data } = await axiosInstance.get<any[]>('/devices/last-actions');
+    return data;
+}
