@@ -4,12 +4,10 @@ import SensorDataTrend from '@/components/SensorDataTrend'
 import { ACTUATOR_IDS } from '@/constants'
 import { triggerDevice } from '@/servers'
 import { getLastActions } from '@/servers/actions'
-import { ping } from '@/servers/device'
 import { Spin, Switch } from 'antd'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 
 
@@ -22,7 +20,7 @@ export interface SensorData {
 }
 
 const HomePage = () => {
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [waitingConnect, setWaitingConnect] = useState(false);
 
 
@@ -65,49 +63,51 @@ const HomePage = () => {
         }
     }
 
-    useEffect(() => {
-        (async () => {
-            try {
-                setIsLoading(true);
-                const isConnected = await ping();
+    // useEffect(() => {
+    //     (async () => {
+    //         try {
+    //             setIsLoading(true);
+    //             const isConnected = await ping();
 
-                if (isConnected) {
-                    await handleSetLastStates();
-                } else {
-                    setWaitingConnect(true);
+    //             if (isConnected) {
+    //                 await handleSetLastStates();
+    //             } else {
+    //                 setWaitingConnect(true);
 
-                    const interval = setInterval(async () => {
-                        const isConnected = await ping();
-                        if (isConnected) {
-                            clearInterval(interval);
-                            await handleSetLastStates();
-                            setWaitingConnect(false);
-                        }
-                    }, 5000);
-                }
-            } catch (e) {
-                console.log(e);
-                setWaitingConnect(true);
-            } finally {
-                setIsLoading(false);
-            }
-        })()
-    }, [])
+    //                 const interval = setInterval(async () => {
+    //                     const isConnected = await ping();
+    //                     if (isConnected) {
+    //                         clearInterval(interval);
+    //                         await handleSetLastStates();
+    //                         setWaitingConnect(false);
+    //                     }
+    //                 }, 5000);
+    //             }
+    //         } catch (e) {
+    //             console.log(e);
+    //             setWaitingConnect(true);
+    //         } finally {
+    //             setIsLoading(false);
+    //         }
+    //     })()
+    // }, [])
 
     // Ping device every 5 seconds to check connection
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            const isConnected = await ping();
-            if (!isConnected) {
-                setWaitingConnect(true);
-            } else if (waitingConnect) {
-                setWaitingConnect(false);
-                await handleSetLastStates();
-            }
-        }, 5000);
+    // useEffect(() => {
+    //     const interval = setInterval(async () => {
+    //         const isConnected = await ping();
+    //         if (!isConnected) {
+    //             setWaitingConnect(true);
+    //         } else if (waitingConnect) {
+    //             setWaitingConnect(false);
+    //             await handleSetLastStates();
+    //         }
+    //     }, 5000);
 
-        return () => clearInterval(interval);
-    }, [])
+    //     return () => clearInterval(interval);
+    // }, [])
+
+
 
     const handleSwitchLed = async (isTurnOn: boolean) => {
         try {
@@ -201,29 +201,17 @@ const HomePage = () => {
     }
 
     return (
-        <div className="flex flex-col flex-1 overflow-hidden">
-            {/* Top navigation */}
-            <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-gray-200">
-                <div className="flex items-center">
-                    <button className="md:hidden text-gray-500 focus:outline-none">
-                        <i className="fas fa-bars" />
-                    </button>
-                    <h2 className="ml-4 text-lg font-medium text-gray-800">Dashboard</h2>
+        <main className="flex-1 flex flex-col gap-6 p-6 bg-gray-50 h-screen">
+            {/* Cards grid */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <RealtimeData />
+            </div>
+            {/* Chart section */}
+            <div className='gap-6 flex-1 grid grid-cols-3'>
+                <div className='col-span-2'>
+                    <SensorDataTrend />
                 </div>
-                <div className="flex items-center space-x-4">
-                    <button className="p-1 text-gray-500 rounded-full focus:outline-none">
-                        <i className="fas fa-bell" />
-                    </button>
-                    <button className="p-1 text-gray-500 rounded-full focus:outline-none">
-                        <i className="fas fa-cog" />
-                    </button>
-                </div>
-            </header>
-            {/* Main content area */}
-            <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                {/* Cards grid */}
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    <RealtimeData />
+                <div className='gap-6 grid grid-rows-3'>
                     {/* Lamp control card */}
                     <div className="bg-white rounded-xl p-6 card-shadow">
                         <div className="flex items-center justify-between">
@@ -283,10 +271,8 @@ const HomePage = () => {
                         </div>
                     </div>
                 </div>
-                {/* Chart section */}
-                <SensorDataTrend />
-            </main>
-        </div>
+            </div>
+        </main>
     )
 }
 
