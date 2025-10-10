@@ -225,18 +225,6 @@ export default function SensorDataPage() {
 
     return (
         <div className="flex-1 flex flex-col">
-            <header className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6">
-                <h2 className="text-xl font-semibold text-gray-800">Sensor Data</h2>
-                <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    size="middle"
-                    onClick={handleDownload}
-                >
-                    Export Data
-                </Button>
-            </header>
-
             <main className="flex-1 p-6 overflow-auto bg-gray-50">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
@@ -379,12 +367,22 @@ export default function SensorDataPage() {
                             </div>
                         </div>
 
-                        <div className="flex gap-4 pt-4">
-                            <Button type="primary" htmlType="submit" loading={loading}>
-                                Apply Filters
-                            </Button>
-                            <Button type="default" onClick={handleReset}>
-                                Reset
+                        <div className='flex justify-between items-center'>
+                            <div className="flex gap-4 pt-4">
+                                <Button type="primary" htmlType="submit" loading={loading}>
+                                    Apply Filters
+                                </Button>
+                                <Button type="default" onClick={handleReset}>
+                                    Reset
+                                </Button>
+                            </div>
+                            <Button
+                                type="primary"
+                                icon={<DownloadOutlined />}
+                                size="middle"
+                                onClick={handleDownload}
+                            >
+                                Export Data
                             </Button>
                         </div>
                     </form>

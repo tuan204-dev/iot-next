@@ -47,6 +47,13 @@ const ProfilePage = () => {
                                     >
                                         <i className="fab fa-github text-2xl" />
                                     </a>
+                                     <a
+                                        href="https://www.figma.com/@tuandang"
+                                        target="_blank"
+                                        className="text-gray-600 hover:text-blue-600"
+                                    >
+                                        <i className="fab fa-figma text-2xl" />
+                                    </a>
                                     <a
                                         href="mailto:contact.tuandang@gmail.com"
                                         className="text-gray-600 hover:text-blue-600"

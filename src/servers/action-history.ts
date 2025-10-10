@@ -19,3 +19,11 @@ export const getActionHistories = async (p: IActionHistoryParams = {}) => {
     const { data } = await axiosInstance.post<IPaginatedResponse<IActionHistory>>('/action-histories/search', p);
     return data;
 }
+
+export const downloadActionHistoryCSV = async (params: IActionHistoryParams = {}) => {
+    const { data } = await axiosInstance.post('/action-histories/download-csv', params, {
+        responseType: 'blob',
+    });
+
+    return data;
+}
