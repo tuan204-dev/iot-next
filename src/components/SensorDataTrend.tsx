@@ -17,15 +17,7 @@ export interface SensorDataTrendItem {
 
 const SensorDataTrend = () => {
     const [selectedMetric, setSelectedMetric] = useState<'temperature' | 'humidity' | 'light'>('light');
-    const [data, setData] = useState([
-        { time: '00:00', temperature: 65, humidity: 60, light: 50 },
-        { time: '04:00', temperature: 68, humidity: 65, light: 80 },
-        { time: '08:00', temperature: 50, humidity: 45, light: 350 },
-        { time: '12:00', temperature: 45, humidity: 50, light: 800 },
-        { time: '16:00', temperature: 42, humidity: 55, light: 600 },
-        { time: '20:00', temperature: 48, humidity: 52, light: 280 },
-        { time: '24:00', temperature: 62, humidity: 58, light: 100 }
-    ]);
+    const [data, setData] = useState<Array<{time: string; temperature: number; humidity: number; light: number}>>([]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -96,7 +88,7 @@ const SensorDataTrend = () => {
             <div className="flex-1">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                        data={data.slice(0, 30)}
+                        data={data}
                         margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
