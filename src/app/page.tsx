@@ -223,7 +223,7 @@ const HomePage = () => {
             {/* Chart section */}
             <div className='gap-6 flex-1 grid grid-cols-3'>
                 <div className='col-span-2'>
-                    <SensorDataTrend recentData={recentSensorData} />
+                    <SensorDataTrend recentSensorData={recentSensorData} />
                 </div>
                 <div className='gap-6 grid grid-rows-3'>
                     {/* Lamp control card */}

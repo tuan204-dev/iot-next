@@ -1,12 +1,84 @@
 'use client'
 
+import { IRecentSensorData } from '@/types'
 import { Select } from 'antd'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { memo, useState, useEffect } from 'react'
+import { memo, useState, useEffect, FC } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 dayjs.extend(relativeTime);
+
+// Custom tooltip component
+interface TooltipProps {
+    active?: boolean;
+    payload?: Array<{
+        payload: {
+            time: string;
+            temperature: number;
+            humidity: number;
+            light: number;
+        };
+    }>;
+    label?: string;
+    selectedMetric?: 'temperature' | 'humidity' | 'light';
+}
+
+const CustomTooltip = ({ active, payload, label, selectedMetric }: TooltipProps) => {
+    if (active && payload?.length) {
+        const data = payload[0].payload;
+        
+        const getMetricInfo = () => {
+            switch (selectedMetric) {
+                case 'temperature':
+                    return {
+                        value: data.temperature,
+                        unit: '°C',
+                        color: 'text-blue-600',
+                        bgColor: 'bg-blue-600',
+                        label: 'Temperature'
+                    };
+                case 'humidity':
+                    return {
+                        value: data.humidity,
+                        unit: '%',
+                        color: 'text-green-600',
+                        bgColor: 'bg-green-600',
+                        label: 'Humidity'
+                    };
+                case 'light':
+                    return {
+                        value: data.light,
+                        unit: ' Lux',
+                        color: 'text-yellow-600',
+                        bgColor: 'bg-yellow-600',
+                        label: 'Light'
+                    };
+                default:
+                    return {
+                        value: 0,
+                        unit: '',
+                        color: 'text-gray-600',
+                        bgColor: 'bg-gray-600',
+                        label: 'Unknown'
+                    };
+            }
+        };
+
+        const metricInfo = getMetricInfo();
+        
+        return (
+            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                <p className="text-gray-700 font-medium mb-2">{`Time: ${label}`}</p>
+                <p className={metricInfo.color}>
+                    <span className={`inline-block w-3 h-3 ${metricInfo.bgColor} rounded-full mr-2`}></span>
+                    {metricInfo.label}: {metricInfo.value}{metricInfo.unit}
+                </p>
+            </div>
+        );
+    }
+    return null;
+};
 
 export interface SensorDataTrendItem {
     time: number;
@@ -15,28 +87,38 @@ export interface SensorDataTrendItem {
     light: number;
 }
 
-const SensorDataTrend = () => {
+interface SensorDataTrendProps {
+    recentSensorData: IRecentSensorData
+}
+
+const SensorDataTrend:FC<SensorDataTrendProps> = ({ recentSensorData }) => {
     const [selectedMetric, setSelectedMetric] = useState<'temperature' | 'humidity' | 'light'>('light');
     const [data, setData] = useState<Array<{time: string; temperature: number; humidity: number; light: number}>>([]);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            const newDataPoint = {
-                time: dayjs().format('HH:mm'),
-                temperature: Math.floor(Math.random() * 30) + 30, // 30-60°C
-                humidity: Math.floor(Math.random() * 40) + 40,    // 40-80%
-                light: Math.floor(Math.random() * 800) + 50       // 50-850 Lux
-            };
+        // Tạo một map để dễ dàng tra cứu dữ liệu theo timestamp
+        const temperatureMap = new Map(recentSensorData.temperature.map(item => [item.timestamp, item.value]));
+        const humidityMap = new Map(recentSensorData.humidity.map(item => [item.timestamp, item.value]));
+        const lightMap = new Map(recentSensorData.light.map(item => [item.timestamp, item.value]));
 
-            setData(prevData => {
-                const newData = [...prevData, newDataPoint];
-                // Giữ tối đa 20 điểm dữ liệu
-                return newData.length > 20 ? newData.slice(1) : newData;
-            });
-        }, 2000);
+        // Lấy tất cả timestamps và sắp xếp theo thời gian
+        const allTimestamps = Array.from(new Set([
+            ...recentSensorData.temperature.map(item => item.timestamp),
+            ...recentSensorData.humidity.map(item => item.timestamp),
+            ...recentSensorData.light.map(item => item.timestamp)
+        ])).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
-        return () => clearInterval(interval);
-    }, []);
+        // Tạo dữ liệu cho chart
+        const chartData = allTimestamps.map(timestamp => ({
+            time: dayjs(timestamp).format('HH:mm'),
+            temperature: temperatureMap.get(timestamp) || 0,
+            humidity: humidityMap.get(timestamp) || 0,
+            light: lightMap.get(timestamp) || 0
+        }));
+
+        // Chỉ giữ 20 điểm dữ liệu mới nhất
+        setData(chartData.slice(-20));
+    }, [recentSensorData]);
 
     const getMetricConfig = () => {
         switch (selectedMetric) {
@@ -106,16 +188,7 @@ const SensorDataTrend = () => {
                             tickMargin={10}
                             domain={[0, 'dataMax + 50']}
                         />
-                        <Tooltip
-                            contentStyle={{
-                                backgroundColor: '#fff',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                                fontSize: '12px'
-                            }}
-                            labelStyle={{ color: '#374151', fontWeight: '500' }}
-                        />
+                        <Tooltip content={<CustomTooltip selectedMetric={selectedMetric} />} />
                         <Line
                             type="monotone"
                             dataKey={metricConfig.dataKey}
