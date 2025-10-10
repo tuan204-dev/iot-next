@@ -1,3 +1,4 @@
+import { IRecentSensorData } from "@/types";
 import { axiosInstance, ISensorDataParams } from ".";
 
 export const downloadSensorDataCSV = async (params: ISensorDataParams = {}) => {
@@ -6,4 +7,9 @@ export const downloadSensorDataCSV = async (params: ISensorDataParams = {}) => {
     });
 
     return data;
+}
+
+export const getRecentSensorData = async () => {
+    const { data } = await axiosInstance.get<{ data: IRecentSensorData }>('/sensor-data/recent');
+    return data?.data;
 }

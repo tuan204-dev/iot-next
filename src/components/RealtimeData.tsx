@@ -1,13 +1,20 @@
 'use client'
 import { SensorData } from '@/app/page'
+import { IRecentSensorData } from '@/types';
 import React, { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 
-const RealtimeData = () => {
+interface RealtimeDataProps {
+    setRecentSensorData: React.Dispatch<React.SetStateAction<IRecentSensorData>>;
+}
+
+const quantityRender = 150;
+
+const RealtimeData: React.FC<RealtimeDataProps> = ({ setRecentSensorData }) => {
     // WebSocket and sensor states
-    const [isConnected, setIsConnected] = useState(false);
+    // const [isConnected, setIsConnected] = useState(false);
     const [sensorData, setSensorData] = useState<SensorData>({
-        temp: 0,
+        temperature: 0,
         humidity: 0,
         light: 0
     });
@@ -37,16 +44,39 @@ const RealtimeData = () => {
         socketRef.current = newSocket;
 
         // Connection events
-        newSocket.on('connect', () => {
-            setIsConnected(true);
-        });
+        // newSocket.on('connect', () => {
+        //     setIsConnected(true);
+        // });
 
-        newSocket.on('disconnect', () => {
-            setIsConnected(false);
-        });
+        // newSocket.on('disconnect', () => {
+        //     setIsConnected(false);
+        // });
 
         // Sensor data events
         newSocket.on('sensor_data', (data: SensorData) => {
+            const now = new Date().toISOString();
+            
+            setRecentSensorData(prev => {
+                const result: IRecentSensorData = {
+                    light: prev.light || [],
+                    humidity: prev.humidity || [],
+                    temperature: prev.temperature || []
+                };
+
+                // Only update arrays that have new data
+                if (data.light !== undefined && data.light !== null) {
+                    result.light = [{ timestamp: now, value: data.light }, ...prev.light.slice(0, quantityRender - 1)];
+                }
+                if (data.humidity !== undefined && data.humidity !== null) {
+                    result.humidity = [{ timestamp: now, value: data.humidity }, ...prev.humidity.slice(0, quantityRender - 1)];
+                }
+                if (data.temperature !== undefined && data.temperature !== null) {
+                    result.temperature = [{ timestamp: now, value: data.temperature }, ...prev.temperature.slice(0, quantityRender - 1)];
+                }
+
+                return result;
+            });
+
             setSensorData(data);
             setLastUpdated(new Date().toLocaleTimeString());
             // Animate all cards
@@ -88,7 +118,7 @@ const RealtimeData = () => {
                 socketRef.current.disconnect();
             }
         };
-    }, []);
+    }, [setRecentSensorData]);
 
     return (
         <>
@@ -98,7 +128,7 @@ const RealtimeData = () => {
                     <div>
                         <p className="text-sm font-medium text-gray-500">Temperature</p>
                         <p className="mt-1 text-3xl font-semibold text-gray-900">
-                            <span id="temperature-value">{sensorData.temp}</span> <span className="text-xl">°C</span>
+                            <span id="temperature-value">{sensorData.temperature}</span> <span className="text-xl">°C</span>
                         </p>
                     </div>
                     <div className="p-3 rounded-full bg-blue-50 text-blue-600">

@@ -4,17 +4,20 @@ import SensorDataTrend from '@/components/SensorDataTrend'
 import { ACTUATOR_IDS } from '@/constants'
 import { triggerDevice } from '@/servers'
 import { getLastActions } from '@/servers/actions'
+import { ping } from '@/servers/device'
+import { getRecentSensorData } from '@/servers/sensor-data'
+import { IRecentSensorData } from '@/types'
 import { Spin, Switch } from 'antd'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 
 dayjs.extend(relativeTime);
 
 export interface SensorData {
-    temp: number
+    temperature: number
     humidity: number
     light: number
 }
@@ -36,6 +39,8 @@ const HomePage = () => {
     const [lastChangeLed, setLastChangeLed] = useState<Date | null>(null);
     const [lastChangeFan, setLastChangeFan] = useState<Date | null>(null);
     const [lastChangeAirConditioner, setLastChangeAirConditioner] = useState<Date | null>(null);
+
+    const [recentSensorData, setRecentSensorData] = useState<IRecentSensorData>({humidity: [], light: [], temperature: []} as IRecentSensorData);
 
     const handleSetLastStates = async () => {
         const lastActions = await getLastActions();
@@ -63,34 +68,43 @@ const HomePage = () => {
         }
     }
 
-    // useEffect(() => {
-    //     (async () => {
-    //         try {
-    //             setIsLoading(true);
-    //             const isConnected = await ping();
+    const fetchRecentData = async () => {
+        try {
+            const data = await getRecentSensorData();
+            setRecentSensorData(data);
+        } catch (e) {
+            console.log(e);
+        }
+    }
 
-    //             if (isConnected) {
-    //                 await handleSetLastStates();
-    //             } else {
-    //                 setWaitingConnect(true);
+    useEffect(() => {
+        (async () => {
+            try {
+                setIsLoading(true);
+                const isConnected = await ping();
 
-    //                 const interval = setInterval(async () => {
-    //                     const isConnected = await ping();
-    //                     if (isConnected) {
-    //                         clearInterval(interval);
-    //                         await handleSetLastStates();
-    //                         setWaitingConnect(false);
-    //                     }
-    //                 }, 5000);
-    //             }
-    //         } catch (e) {
-    //             console.log(e);
-    //             setWaitingConnect(true);
-    //         } finally {
-    //             setIsLoading(false);
-    //         }
-    //     })()
-    // }, [])
+                if (isConnected) {
+                    await Promise.all([handleSetLastStates(), fetchRecentData()]);
+                } else {
+                    setWaitingConnect(true);
+
+                    const interval = setInterval(async () => {
+                        const isConnected = await ping();
+                        if (isConnected) {
+                            clearInterval(interval);
+                            await Promise.all([handleSetLastStates(), fetchRecentData()]);
+                            setWaitingConnect(false);
+                        }
+                    }, 5000);
+                }
+            } catch (e) {
+                console.log(e);
+                setWaitingConnect(true);
+            } finally {
+                setIsLoading(false);
+            }
+        })()
+    }, [])
 
     // Ping device every 5 seconds to check connection
     // useEffect(() => {
@@ -204,12 +218,12 @@ const HomePage = () => {
         <main className="flex-1 flex flex-col gap-6 p-6 bg-gray-50 h-screen">
             {/* Cards grid */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <RealtimeData />
+                <RealtimeData setRecentSensorData={setRecentSensorData} />
             </div>
             {/* Chart section */}
             <div className='gap-6 flex-1 grid grid-cols-3'>
                 <div className='col-span-2'>
-                    <SensorDataTrend />
+                    <SensorDataTrend recentData={recentSensorData} />
                 </div>
                 <div className='gap-6 grid grid-rows-3'>
                     {/* Lamp control card */}
@@ -256,7 +270,7 @@ const HomePage = () => {
                     <div className="bg-white rounded-xl p-6 card-shadow">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-500">Air Purifier</p>
+                                <p className="text-sm font-medium text-gray-500">Air Conditioner</p>
                                 <p className="mt-1 text-lg font-semibold text-gray-900">Office</p>
                             </div>
                             <Switch checked={isAirConditionerOn} onChange={handleSwitchAirConditioner} loading={isSwitchingAirConditioner} />

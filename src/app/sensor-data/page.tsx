@@ -7,12 +7,14 @@ import { downloadSensorDataCSV } from '@/servers/sensor-data';
 import { IPaginatedResponse, ISensor, ISensorData } from '@/types';
 import { DownloadOutlined } from '@ant-design/icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, DatePicker, InputNumber, Select, Table, Tag } from 'antd';
+import { Button, DatePicker, InputNumber, Select, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { MdOutlineContentCopy } from "react-icons/md";
+import toast from 'react-hot-toast';
 
 type FilterFormData = {
     sensorIds?: number[];
@@ -53,7 +55,7 @@ export default function SensorDataPage() {
     const [loading, setLoading] = useState(false);
     const [sensors, setSensors] = useState<ISensor[]>([]);
 
-    const { control, handleSubmit, reset, formState: { errors }, watch, setValue, getValues } = useForm<FilterFormData>({
+    const { control, handleSubmit, reset, formState: { errors }, setValue, getValues } = useForm<FilterFormData>({
         resolver: zodResolver(filterSchema),
     });
 
@@ -163,23 +165,21 @@ export default function SensorDataPage() {
             key: 'status',
             render: (value: number, record: ISensorData) => {
                 let isWarning = false;
-                
-                // Kiểm tra cảnh báo dựa trên unit của sensor
+
                 switch (record.unit) {
-                    case '°C': // Temperature
+                    case '°C':
                         isWarning = value < SENSOR_LIMITS.TEMPERATURE.MIN || value > SENSOR_LIMITS.TEMPERATURE.MAX;
                         break;
-                    case '%': // Humidity
+                    case '%':
                         isWarning = value < SENSOR_LIMITS.HUMIDITY.MIN || value > SENSOR_LIMITS.HUMIDITY.MAX;
                         break;
-                    case 'lx': // Light
+                    case 'lx':
                         isWarning = value < SENSOR_LIMITS.LIGHT.MIN || value > SENSOR_LIMITS.LIGHT.MAX;
                         break;
                     default:
-                        // Fallback cho các unit khác
                         isWarning = value > 30 || value < 10;
                 }
-                
+
                 const statusText = isWarning ? 'Warning' : 'Normal';
                 const color = isWarning ? 'warning' : 'success';
                 return <Tag color={color}>{statusText}</Tag>;
@@ -193,7 +193,30 @@ export default function SensorDataPage() {
                 timestamp ? dayjs(timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A',
             sorter: true,
         },
+        {
+            title: 'Actions',
+            key: 'actions',
+            render: (_, record) => (
+                <Tooltip title="Copy">
+                    <Button
+                        type="link"
+                        onClick={() => handleCopy(record)}
+                    >
+                        <MdOutlineContentCopy />
+                    </Button>
+                </Tooltip>
+            ),
+        }
     ];
+
+    const handleCopy = (record: ISensorData) => {
+        const textToCopy = `Sensor: ${record.sensor?.name || 'Unknown Sensor'}\nValue: ${record.value?.toFixed(2) || 'N/A'} ${record.unit || ''}\nTimestamp: ${record.timestamp ? dayjs(record.timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A'}`;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            toast.success('Copied to clipboard');
+        }).catch(err => {
+            toast.error('Failed to copy');
+        });
+    }
 
     const onSubmit = (data: FilterFormData) => {
         data.page = 1;

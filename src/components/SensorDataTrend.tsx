@@ -16,7 +16,7 @@ export interface SensorDataTrendItem {
 }
 
 const SensorDataTrend = () => {
-    const [selectedMetric, setSelectedMetric] = useState<'temperature' | 'humidity' | 'light'>('temperature');
+    const [selectedMetric, setSelectedMetric] = useState<'temperature' | 'humidity' | 'light'>('light');
     const [data, setData] = useState([
         { time: '00:00', temperature: 65, humidity: 60, light: 50 },
         { time: '04:00', temperature: 68, humidity: 65, light: 80 },
@@ -71,7 +71,7 @@ const SensorDataTrend = () => {
 
     const metricConfig = getMetricConfig();
     return (
-        <div className="bg-white rounded-xl p-6 card-shadow">
+        <div className="bg-white rounded-xl p-6 card-shadow flex flex-col h-full">
             <div className="flex items-center justify-between mb-3">
                 <div>
                     <h3 className="text-lg font-medium text-gray-900">
@@ -93,7 +93,7 @@ const SensorDataTrend = () => {
                     />
                 </div>
             </div>
-            <div className="h-[500px]">
+            <div className="flex-1">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                         data={data.slice(0, 30)}

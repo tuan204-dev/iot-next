@@ -21,3 +21,14 @@ export interface ISensor {
     id: number;
     name: string;
 }
+
+export interface IRecentSensorDataItem {
+    timestamp: string;
+    value: number;
+}
+
+export interface IRecentSensorData {
+    temperature: IRecentSensorDataItem[];
+    humidity: IRecentSensorDataItem[];
+    light: IRecentSensorDataItem[];
+}

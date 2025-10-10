@@ -8,11 +8,13 @@ import { IActionHistory } from '@/types/action-history'
 import { IActuator } from '@/types/actuator'
 import { DownloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, DatePicker, Input, Select, Table, Tag } from 'antd'
+import { Button, DatePicker, Input, Select, Table, Tag, Tooltip } from 'antd'
 import { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import toast from 'react-hot-toast'
+import { MdOutlineContentCopy } from 'react-icons/md'
 import { z } from 'zod'
 
 type FilterFormData = {
@@ -58,8 +60,6 @@ const ActionHistoryPage = () => {
     const { control, handleSubmit, reset, formState: { errors }, setValue, getValues } = useForm<FilterFormData>({
         resolver: zodResolver(filterSchema),
     });
-
-    console.log('Form errors:', errors);
 
     const fetchActions = useCallback(async () => {
         try {
@@ -185,7 +185,30 @@ const ActionHistoryPage = () => {
                 timestamp ? dayjs(timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A',
             sorter: true,
         },
+        {
+            title: 'Actions',
+            key: 'actions',
+            render: (_, record) => (
+                <Tooltip title="Copy">
+                    <Button
+                        type="link"
+                        onClick={() => handleCopy(record)}
+                    >
+                        <MdOutlineContentCopy />
+                    </Button>
+                </Tooltip>
+            ),
+        }
     ];
+
+    const handleCopy = (record: IActionHistory) => {
+        const textToCopy = `Action: ${record.action?.name || 'Unknown Action'}\nActuator: ${record.actuator?.name || 'Unknown Actuator'}\nStatus: ${record.status || 'N/A'}\nTimestamp: ${record.timestamp ? dayjs(record.timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A'}`;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            toast.success('Copied to clipboard');
+        }).catch(err => {
+            toast.error('Failed to copy');
+        });
+    }
 
     return (
         <div className="flex-1 flex flex-col">
