@@ -2,23 +2,6 @@
 const ProfilePage = () => {
     return (
         <div className="flex flex-col flex-1 overflow-hidden">
-            {/* Top navigation */}
-            <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-gray-200">
-                <div className="flex items-center">
-                    <button className="md:hidden text-gray-500 focus:outline-none">
-                        <i className="fas fa-bars" />
-                    </button>
-                    <h2 className="ml-4 text-lg font-medium text-gray-800">Profile</h2>
-                </div>
-                <div className="flex items-center space-x-4">
-                    <button className="p-1 text-gray-500 rounded-full focus:outline-none">
-                        <i className="fas fa-bell" />
-                    </button>
-                    <button className="p-1 text-gray-500 rounded-full focus:outline-none">
-                        <i className="fas fa-cog" />
-                    </button>
-                </div>
-            </header>
             {/* Main content area */}
             <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
                 {/* Profile Header */}
@@ -48,7 +31,7 @@ const ProfilePage = () => {
                                         <i className="fab fa-github text-2xl" />
                                     </a>
                                      <a
-                                        href="https://www.figma.com/@tuandang"
+                                        href="https://www.figma.com/design/U4bpYGDz5aHOaRDDSj1dnj"
                                         target="_blank"
                                         className="text-gray-600 hover:text-blue-600"
                                     >
