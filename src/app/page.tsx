@@ -80,28 +80,28 @@ const HomePage = () => {
     useEffect(() => {
         (async () => {
             try {
-                setIsLoading(true);
-                const isConnected = await ping();
+                // setIsLoading(true);
+                // const isConnected = await ping();
 
-                if (isConnected) {
+                // if (isConnected) {
                     await Promise.all([handleSetLastStates(), fetchRecentData()]);
-                } else {
-                    setWaitingConnect(true);
+                // } else {
+                //     setWaitingConnect(true);
 
-                    const interval = setInterval(async () => {
-                        const isConnected = await ping();
-                        if (isConnected) {
-                            clearInterval(interval);
-                            await Promise.all([handleSetLastStates(), fetchRecentData()]);
-                            setWaitingConnect(false);
-                        }
-                    }, 5000);
-                }
+                //     const interval = setInterval(async () => {
+                //         const isConnected = await ping();
+                //         if (isConnected) {
+                //             clearInterval(interval);
+                //             await Promise.all([handleSetLastStates(), fetchRecentData()]);
+                //             setWaitingConnect(false);
+                //         }
+                //     }, 5000);
+                // }
             } catch (e) {
                 console.log(e);
-                setWaitingConnect(true);
+                // setWaitingConnect(true);
             } finally {
-                setIsLoading(false);
+                // setIsLoading(false);
             }
         })()
     }, [])
