@@ -5,9 +5,9 @@ import { getSensorData } from '@/servers';
 import { getAllSensors } from '@/servers/sensor';
 import { downloadSensorDataCSV } from '@/servers/sensor-data';
 import { IPaginatedResponse, ISensor, ISensorData } from '@/types';
-import { DownloadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, DatePicker, InputNumber, Select, Table, Tag, Tooltip } from 'antd';
+import { Button, DatePicker, Input, InputNumber, Select, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
@@ -17,10 +17,13 @@ import { MdOutlineContentCopy } from "react-icons/md";
 import toast from 'react-hot-toast';
 
 type FilterFormData = {
+    query?: string;
     sensorIds?: number[];
     unit?: string;
+    value?: number;
     startValue?: number;
     endValue?: number;
+    date?: number;
     startDate?: number;
     endDate?: number;
     sortBy?: string;
@@ -30,10 +33,13 @@ type FilterFormData = {
 };
 
 const filterSchema = z.object({
+    query: z.string().optional(),
     sensorIds: z.array(z.number()).optional(),
     unit: z.string().optional(),
+    value: z.number().optional(),
     startValue: z.number().optional(),
     endValue: z.number().optional(),
+    date: z.number().optional(),
     startDate: z.number().optional(),
     endDate: z.number().optional(),
     sortBy: z.string().optional(),
@@ -73,6 +79,21 @@ export default function SensorDataPage() {
         setLoading(true);
         try {
             const cleanedFilter = { ...filter };
+            
+            // Convert date to startDate and endDate with 1 second buffer
+            if (cleanedFilter.date) {
+                cleanedFilter.startDate = cleanedFilter.date - 1000; // Lùi 1 giây
+                cleanedFilter.endDate = cleanedFilter.date + 1000; // Thêm 1 giây
+                delete cleanedFilter.date; // Remove date field
+            }
+            
+            // Convert value to startValue and endValue with same value
+            if (cleanedFilter.value !== undefined && cleanedFilter.value !== null) {
+                cleanedFilter.startValue = cleanedFilter.value;
+                cleanedFilter.endValue = cleanedFilter.value;
+                delete cleanedFilter.value; // Remove value field
+            }
+            
             Object.keys(cleanedFilter).forEach(key => {
                 if (cleanedFilter[key as keyof FilterFormData] === undefined || cleanedFilter[key as keyof FilterFormData] === null) {
                     delete cleanedFilter[key as keyof FilterFormData];
@@ -119,6 +140,21 @@ export default function SensorDataPage() {
 
     const handleDownload = async () => {
         const value = getValues();
+        
+        // Convert date to startDate and endDate with 1 second buffer for download
+        if (value.date) {
+            value.startDate = value.date - 1000; // Lùi 1 giây
+            value.endDate = value.date + 1000; // Thêm 1 giây
+            delete value.date; // Remove date field
+        }
+        
+        // Convert value to startValue and endValue with same value for download
+        if (value.value !== undefined && value.value !== null) {
+            value.startValue = value.value;
+            value.endValue = value.value;
+            delete value.value; // Remove value field
+        }
+        
         const blob = await downloadSensorDataCSV(value);
         const url = window.URL.createObjectURL(new Blob([blob]));
         const link = document.createElement('a');
@@ -210,10 +246,10 @@ export default function SensorDataPage() {
     ];
 
     const handleCopy = (record: ISensorData) => {
-        const textToCopy = `Sensor: ${record.sensor?.name || 'Unknown Sensor'}\nValue: ${record.value?.toFixed(2) || 'N/A'} ${record.unit || ''}\nTimestamp: ${record.timestamp ? dayjs(record.timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A'}`;
+        const textToCopy = record.timestamp ? dayjs(record.timestamp).format('YYYY-MM-DD HH:mm:ss') : 'N/A';
         navigator.clipboard.writeText(textToCopy).then(() => {
-            toast.success('Copied to clipboard');
-        }).catch(err => {
+            toast.success('Time copied to clipboard');
+        }).catch(() => {
             toast.error('Failed to copy');
         });
     }
@@ -230,6 +266,26 @@ export default function SensorDataPage() {
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Search
+                                </label>
+                                <Controller
+                                    name="query"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Input
+                                            {...field}
+                                            placeholder="Search..."
+                                            prefix={<SearchOutlined />}
+                                        />
+                                    )}
+                                />
+                                {errors.query && (
+                                    <span className="text-red-500 text-sm">{errors.query.message}</span>
+                                )}
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Sensors
@@ -282,87 +338,44 @@ export default function SensorDataPage() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Start Value
+                                    Value
                                 </label>
                                 <Controller
-                                    name="startValue"
+                                    name="value"
                                     control={control}
                                     render={({ field }) => (
                                         <InputNumber
                                             {...field}
-                                            placeholder="Enter minimum value"
+                                            placeholder="Enter value"
                                             style={{ width: '100%' }}
                                         />
                                     )}
                                 />
-                                {errors.startValue && (
-                                    <span className="text-red-500 text-sm">{errors.startValue.message}</span>
+                                {errors.value && (
+                                    <span className="text-red-500 text-sm">{errors.value.message}</span>
                                 )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    End Value
+                                    Date
                                 </label>
                                 <Controller
-                                    name="endValue"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <InputNumber
-                                            {...field}
-                                            placeholder="Enter maximum value"
-                                            style={{ width: '100%' }}
-                                        />
-                                    )}
-                                />
-                                {errors.endValue && (
-                                    <span className="text-red-500 text-sm">{errors.endValue.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Start Date
-                                </label>
-                                <Controller
-                                    name="startDate"
+                                    name="date"
                                     control={control}
                                     render={({ field }) => (
                                         <DatePicker
                                             {...field}
                                             showTime
-                                            placeholder="Select start date"
+                                            placeholder="Select date"
                                             style={{ width: '100%' }}
                                             value={field.value ? dayjs(field.value) : null}
                                             onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
                                         />
                                     )}
                                 />
-                                {errors.startDate && (
-                                    <span className="text-red-500 text-sm">{errors.startDate.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    End Date
-                                </label>
-                                <Controller
-                                    name="endDate"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <DatePicker
-                                            {...field}
-                                            showTime
-                                            placeholder="Select end date"
-                                            style={{ width: '100%' }}
-                                            value={field.value ? dayjs(field.value) : null}
-                                            onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
-                                        />
-                                    )}
-                                />
-                                {errors.endDate && (
-                                    <span className="text-red-500 text-sm">{errors.endDate.message}</span>
+                                {errors.date && (
+                                    <span className="text-red-500 text-sm">{errors.date.message}</span>
                                 )}
                             </div>
                         </div>

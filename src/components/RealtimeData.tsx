@@ -1,7 +1,9 @@
 'use client'
 import { SensorData } from '@/app/page'
+import { SENSOR_LIMITS } from '@/constants';
 import { IRecentSensorData } from '@/types';
 import React, { useEffect, useRef, useState } from 'react'
+import toast from 'react-hot-toast';
 import { io, Socket } from 'socket.io-client'
 
 interface RealtimeDataProps {
@@ -83,6 +85,18 @@ const RealtimeData: React.FC<RealtimeDataProps> = ({ setRecentSensorData }) => {
             animateCard(tempCardRef);
             animateCard(humidityCardRef);
             animateCard(lightCardRef);
+
+            if (data.temperature > SENSOR_LIMITS.TEMPERATURE.MAX || data.temperature < SENSOR_LIMITS.TEMPERATURE.MIN) {
+                toast.error(`Temperature out of range: ${data.temperature}°C`, { duration: 4000 });
+            }
+
+            if (data.humidity > SENSOR_LIMITS.HUMIDITY.MAX || data.humidity < SENSOR_LIMITS.HUMIDITY.MIN) {
+                toast.error(`Humidity out of range: ${data.humidity}%`, { duration: 4000 });
+            }
+
+            if (data.light > SENSOR_LIMITS.LIGHT.MAX || data.light < SENSOR_LIMITS.LIGHT.MIN) {
+                toast.error(`Light level out of range: ${data.light} Lux`, { duration: 4000 });
+            }
         });
 
         newSocket.on('temperature', (data: { value: number; unit: string }) => {

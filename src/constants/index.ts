@@ -20,7 +20,7 @@ export const SENSOR_LIMITS = {
         MAX: 80,
     },
     LIGHT: {
-        MIN: 100,
+        MIN: 30,
         MAX: 1000,
     },
 } as const

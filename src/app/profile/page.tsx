@@ -1,4 +1,9 @@
 
+import { FaGithub, FaFigma, FaEnvelope } from 'react-icons/fa'
+import { HiOutlineDocumentText } from 'react-icons/hi'
+import { SiPostman } from 'react-icons/si'
+import { MdApi } from 'react-icons/md'
+
 const ProfilePage = () => {
     return (
         <div className="flex flex-col flex-1 overflow-hidden">
@@ -26,22 +31,42 @@ const ProfilePage = () => {
                                     <a
                                         href="https://github.com/tuan204-dev"
                                         target="_blank"
-                                        className="text-gray-600 hover:text-blue-600"
+                                        className="text-gray-600 hover:text-blue-600 transition-colors duration-200"
+                                        title="GitHub"
                                     >
-                                        <i className="fab fa-github text-2xl" />
-                                    </a>
-                                     <a
-                                        href="https://www.figma.com/design/U4bpYGDz5aHOaRDDSj1dnj"
-                                        target="_blank"
-                                        className="text-gray-600 hover:text-blue-600"
-                                    >
-                                        <i className="fab fa-figma text-2xl" />
+                                        <FaGithub className="text-2xl" />
                                     </a>
                                     <a
-                                        href="mailto:contact.tuandang@gmail.com"
-                                        className="text-gray-600 hover:text-blue-600"
+                                        href="https://www.figma.com/design/U4bpYGDz5aHOaRDDSj1dnj"
+                                        target="_blank"
+                                        className="text-gray-600 hover:text-purple-600 transition-colors duration-200"
+                                        title="Figma Design"
                                     >
-                                        <i className="fas fa-envelope text-2xl" />
+                                        <FaFigma className="text-2xl" />
+                                    </a>
+                                    <a
+                                        href="https://drive.google.com/file/d/17Y9-nqtct2E7HgTExdf4-IBm-Smg1n61/view?usp=sharing"
+                                        target="_blank"
+                                        className="text-gray-600 hover:text-green-600 transition-colors duration-200"
+                                        title="Project Documentation"
+                                    >
+                                        <HiOutlineDocumentText className="text-2xl" />
+                                    </a>
+                                    <a
+                                        href="http://localhost:8000/api"
+                                        target="_blank"
+                                        className="text-gray-600 hover:text-orange-600 transition-colors duration-200"
+                                        title="API Documentation"
+                                    >
+                                        <MdApi className="text-2xl" />
+                                    </a>
+                                    <a
+                                        href="https://web.postman.co/workspace/My-Workspace~2543eb00-7a4c-447e-87e3-2dd7bd2b3b46/collection/28667228-2fb0c021-9828-4ee4-8fab-c659a320650f?action=share&creator=28667228"
+                                        target="_blank"
+                                        className="text-gray-600 hover:text-orange-500 transition-colors duration-200"
+                                        title="Postman Collection"
+                                    >
+                                        <SiPostman className="text-2xl" />
                                     </a>
                                 </div>
                             </div>

@@ -11,6 +11,7 @@ import { Spin, Switch } from 'antd'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useEffect, useState } from 'react'
+import { useLocalStorage } from 'usehooks-ts'
 import toast from 'react-hot-toast'
 
 
@@ -36,9 +37,9 @@ const HomePage = () => {
     const [isFanOn, setIsFanOn] = useState(false);
     const [isAirConditionerOn, setIsAirConditionerOn] = useState(false);
 
-    const [lastChangeLed, setLastChangeLed] = useState<Date | null>(null);
-    const [lastChangeFan, setLastChangeFan] = useState<Date | null>(null);
-    const [lastChangeAirConditioner, setLastChangeAirConditioner] = useState<Date | null>(null);
+    const [lastChangeLed, setLastChangeLed] = useLocalStorage<Date | null>('lastChangeLed', null);
+    const [lastChangeFan, setLastChangeFan] = useLocalStorage<Date | null>('lastChangeFan', null);
+    const [lastChangeAirConditioner, setLastChangeAirConditioner] = useLocalStorage<Date | null>('lastChangeAirConditioner', null);
 
     const [recentSensorData, setRecentSensorData] = useState<IRecentSensorData>({humidity: [], light: [], temperature: []} as IRecentSensorData);
 
@@ -80,46 +81,46 @@ const HomePage = () => {
     useEffect(() => {
         (async () => {
             try {
-                // setIsLoading(true);
-                // const isConnected = await ping();
+                setIsLoading(true);
+                const isConnected = await ping();
 
-                // if (isConnected) {
+                if (isConnected) {
                     await Promise.all([handleSetLastStates(), fetchRecentData()]);
-                // } else {
-                //     setWaitingConnect(true);
+                } else {
+                    setWaitingConnect(true);
 
-                //     const interval = setInterval(async () => {
-                //         const isConnected = await ping();
-                //         if (isConnected) {
-                //             clearInterval(interval);
-                //             await Promise.all([handleSetLastStates(), fetchRecentData()]);
-                //             setWaitingConnect(false);
-                //         }
-                //     }, 5000);
-                // }
+                    const interval = setInterval(async () => {
+                        const isConnected = await ping();
+                        if (isConnected) {
+                            clearInterval(interval);
+                            await Promise.all([handleSetLastStates(), fetchRecentData()]);
+                            setWaitingConnect(false);
+                        }
+                    }, 5000);
+                }
             } catch (e) {
                 console.log(e);
-                // setWaitingConnect(true);
+                setWaitingConnect(true);
             } finally {
-                // setIsLoading(false);
+                setIsLoading(false);
             }
         })()
     }, [])
 
-    // Ping device every 5 seconds to check connection
-    // useEffect(() => {
-    //     const interval = setInterval(async () => {
-    //         const isConnected = await ping();
-    //         if (!isConnected) {
-    //             setWaitingConnect(true);
-    //         } else if (waitingConnect) {
-    //             setWaitingConnect(false);
-    //             await handleSetLastStates();
-    //         }
-    //     }, 5000);
+    useEffect(() => {
+        const interval = setInterval(async () => {
+            const isConnected = await ping();
+            if (!isConnected) {
+                setWaitingConnect(true);
+            } else if (waitingConnect) {
+                console.log('im here')
+                setWaitingConnect(false);
+                await handleSetLastStates();
+            }
+        }, 5000);
 
-    //     return () => clearInterval(interval);
-    // }, [])
+        return () => clearInterval(interval);
+    }, [waitingConnect])
 
 
 

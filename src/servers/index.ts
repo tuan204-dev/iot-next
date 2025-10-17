@@ -2,8 +2,8 @@ import { IPaginatedResponse, ISensorData } from "@/types";
 import axios from "axios";
 
 export const axiosInstance = axios.create({
-    // baseURL: "http://localhost:8000",
-    baseURL: "https://zjvprhmg-8000.asse.devtunnels.ms",
+    baseURL: "http://localhost:8000",
+    // baseURL: "https://zjvprhmg-8000.asse.devtunnels.ms",
 })
 
 interface ITriggerDeviceParams {

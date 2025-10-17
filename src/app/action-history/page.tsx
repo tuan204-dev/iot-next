@@ -22,6 +22,7 @@ type FilterFormData = {
     actuatorIds?: string[];
     actionIds?: string[];
     status?: string;
+    date?: number;
     startDate?: number;
     endDate?: number;
     sortBy?: string;
@@ -32,9 +33,10 @@ type FilterFormData = {
 
 const filterSchema = z.object({
     queryName: z.string().optional(),
-    actuatorIds: z.array(z.number()).optional(),
-    actionIds: z.array(z.number()).optional(),
+    actuatorIds: z.array(z.string()).optional(),
+    actionIds: z.array(z.string()).optional(),
     status: z.string().optional(),
+    date: z.number().optional(),
     startDate: z.number().optional(),
     endDate: z.number().optional(),
     sortBy: z.string().optional(),
@@ -83,6 +85,14 @@ const ActionHistoryPage = () => {
         setLoading(true);
         try {
             const cleanedFilter = { ...filter };
+            
+            // Convert date to startDate and endDate with 1 second buffer
+            if (cleanedFilter.date) {
+                cleanedFilter.startDate = cleanedFilter.date - 1000; // Lùi 1 giây
+                cleanedFilter.endDate = cleanedFilter.date + 1000; // Thêm 1 giây
+                delete cleanedFilter.date; // Remove date field
+            }
+            
             Object.keys(cleanedFilter).forEach(key => {
                 if (cleanedFilter[key as keyof FilterFormData] === undefined || cleanedFilter[key as keyof FilterFormData] === null) {
                     delete cleanedFilter[key as keyof FilterFormData];
@@ -130,6 +140,14 @@ const ActionHistoryPage = () => {
 
     const handleDownload = async () => {
         const value = getValues();
+        
+        // Convert date to startDate and endDate with 1 second buffer for download
+        if (value.date) {
+            value.startDate = value.date - 1000; // Lùi 1 giây
+            value.endDate = value.date + 1000; // Thêm 1 giây
+            delete value.date; // Remove date field
+        }
+        
         const blob = await downloadActionHistoryCSV(value);
         const url = window.URL.createObjectURL(new Blob([blob]));
         const link = document.createElement('a');
@@ -210,10 +228,10 @@ const ActionHistoryPage = () => {
     ];
 
     const handleCopy = (record: IActionHistory) => {
-        const textToCopy = `Action: ${record.action?.name || 'Unknown Action'}\nActuator: ${record.actuator?.name || 'Unknown Actuator'}\nStatus: ${record.status || 'N/A'}\nTimestamp: ${record.timestamp ? dayjs(record.timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A'}`;
+        const textToCopy = record.timestamp ? dayjs(record.timestamp).format('YYYY-MM-DD HH:mm:ss') : 'N/A';
         navigator.clipboard.writeText(textToCopy).then(() => {
-            toast.success('Copied to clipboard');
-        }).catch(err => {
+            toast.success('Time copied to clipboard');
+        }).catch(() => {
             toast.error('Failed to copy');
         });
     }
@@ -326,50 +344,26 @@ const ActionHistoryPage = () => {
                             </div>
 
                             <div>
-                                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Start Date
+                                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Date
                                 </label>
                                 <Controller
-                                    name="startDate"
+                                    name="date"
                                     control={control}
                                     render={({ field }) => (
                                         <DatePicker
                                             {...field}
-                                            id="startDate"
+                                            id="date"
                                             showTime
-                                            placeholder="Select start date"
+                                            placeholder="Select date"
                                             style={{ width: '100%' }}
                                             value={field.value ? dayjs(field.value) : null}
                                             onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
                                         />
                                     )}
                                 />
-                                {errors.startDate && (
-                                    <span className="text-red-500 text-sm">{errors.startDate.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
-                                    End Date
-                                </label>
-                                <Controller
-                                    name="endDate"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <DatePicker
-                                            {...field}
-                                            id="endDate"
-                                            showTime
-                                            placeholder="Select end date"
-                                            style={{ width: '100%' }}
-                                            value={field.value ? dayjs(field.value) : null}
-                                            onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
-                                        />
-                                    )}
-                                />
-                                {errors.endDate && (
-                                    <span className="text-red-500 text-sm">{errors.endDate.message}</span>
+                                {errors.date && (
+                                    <span className="text-red-500 text-sm">{errors.date.message}</span>
                                 )}
                             </div>
                         </div>
