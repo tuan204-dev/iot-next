@@ -1,31 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
-import { UNITS, SENSOR_LIMITS } from '@/constants';
+import { SENSOR_LIMITS } from '@/constants';
 import { getSensorData } from '@/servers';
-import { getAllSensors } from '@/servers/sensor';
 import { downloadSensorDataCSV } from '@/servers/sensor-data';
-import { IPaginatedResponse, ISensor, ISensorData } from '@/types';
+import { IPaginatedResponse, ISensorData } from '@/types';
 import { DownloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, DatePicker, Input, InputNumber, Select, Table, Tag, Tooltip } from 'antd';
+import { Button, Input, Select, Table, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { MdOutlineContentCopy } from "react-icons/md";
 import toast from 'react-hot-toast';
 
 type FilterFormData = {
-    query?: string;
-    sensorIds?: number[];
-    unit?: string;
-    value?: number;
-    startValue?: number;
-    endValue?: number;
-    date?: number;
-    startDate?: number;
-    endDate?: number;
+    searchField?: string;
+    searchValue?: string;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
     page?: number;
@@ -33,15 +25,8 @@ type FilterFormData = {
 };
 
 const filterSchema = z.object({
-    query: z.string().optional(),
-    sensorIds: z.array(z.number()).optional(),
-    unit: z.string().optional(),
-    value: z.number().optional(),
-    startValue: z.number().optional(),
-    endValue: z.number().optional(),
-    date: z.number().optional(),
-    startDate: z.number().optional(),
-    endDate: z.number().optional(),
+    searchField: z.string().optional(),
+    searchValue: z.string().optional(),
     sortBy: z.string().optional(),
     sortOrder: z.enum(['ASC', 'DESC']).optional(),
     page: z.number().min(1).default(1),
@@ -59,43 +44,24 @@ export default function SensorDataPage() {
         }
     });
     const [loading, setLoading] = useState(false);
-    const [sensors, setSensors] = useState<ISensor[]>([]);
-
     const { control, handleSubmit, reset, formState: { errors }, setValue, getValues } = useForm<FilterFormData>({
         resolver: zodResolver(filterSchema),
-    });
-
-    const fetchSensors = useCallback(async () => {
-        try {
-            const sensors = await getAllSensors();
-
-            setSensors(sensors);
-        } catch (error) {
-            console.error('Error fetching sensors:', error);
+        defaultValues: {
+            searchField: 'all',
+            searchValue: '',
         }
-    }, []);
+    });
 
     const fetchData = async (filter: FilterFormData) => {
         setLoading(true);
         try {
             const cleanedFilter = { ...filter };
             
-            // Convert date to startDate and endDate with 1 second buffer
-            if (cleanedFilter.date) {
-                cleanedFilter.startDate = cleanedFilter.date - 1000; // Lùi 1 giây
-                cleanedFilter.endDate = cleanedFilter.date + 1000; // Thêm 1 giây
-                delete cleanedFilter.date; // Remove date field
-            }
-            
-            // Convert value to startValue and endValue with same value
-            if (cleanedFilter.value !== undefined && cleanedFilter.value !== null) {
-                cleanedFilter.startValue = cleanedFilter.value;
-                cleanedFilter.endValue = cleanedFilter.value;
-                delete cleanedFilter.value; // Remove value field
-            }
-            
+            // Remove empty values
             Object.keys(cleanedFilter).forEach(key => {
-                if (cleanedFilter[key as keyof FilterFormData] === undefined || cleanedFilter[key as keyof FilterFormData] === null) {
+                if (cleanedFilter[key as keyof FilterFormData] === undefined || 
+                    cleanedFilter[key as keyof FilterFormData] === null || 
+                    cleanedFilter[key as keyof FilterFormData] === '') {
                     delete cleanedFilter[key as keyof FilterFormData];
                 }
             });
@@ -109,7 +75,6 @@ export default function SensorDataPage() {
 
     useEffect(() => {
         fetchData({});
-        fetchSensors();
     }, []);
 
     const handleReset = () => {
@@ -140,20 +105,6 @@ export default function SensorDataPage() {
 
     const handleDownload = async () => {
         const value = getValues();
-        
-        // Convert date to startDate and endDate with 1 second buffer for download
-        if (value.date) {
-            value.startDate = value.date - 1000; // Lùi 1 giây
-            value.endDate = value.date + 1000; // Thêm 1 giây
-            delete value.date; // Remove date field
-        }
-        
-        // Convert value to startValue and endValue with same value for download
-        if (value.value !== undefined && value.value !== null) {
-            value.startValue = value.value;
-            value.endValue = value.value;
-            delete value.value; // Remove value field
-        }
         
         const blob = await downloadSensorDataCSV(value);
         const url = window.URL.createObjectURL(new Blob([blob]));
@@ -246,7 +197,7 @@ export default function SensorDataPage() {
     ];
 
     const handleCopy = (record: ISensorData) => {
-        const textToCopy = record.timestamp ? dayjs(record.timestamp).format('YYYY-MM-DD HH:mm:ss') : 'N/A';
+        const textToCopy = record.timestamp ? dayjs(record.timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A';
         navigator.clipboard.writeText(textToCopy).then(() => {
             toast.success('Time copied to clipboard');
         }).catch(() => {
@@ -265,117 +216,57 @@ export default function SensorDataPage() {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Search
+                                <label htmlFor="searchField" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Search Field
                                 </label>
                                 <Controller
-                                    name="query"
+                                    name="searchField"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select
+                                            {...field}
+                                            id="searchField"
+                                            placeholder="Select field to search"
+                                            style={{ width: '100%' }}
+                                            allowClear
+                                            options={[
+                                                { value: 'all', label: 'All' },
+                                                { value: 'id', label: 'ID' },
+                                                { value: 'name', label: 'Name' },
+                                                { value: 'temp', label: 'Temp (°C)' },
+                                                { value: 'humidity', label: 'Humidity (%)' },
+                                                { value: 'light', label: 'Light (lx)' },
+                                                { value: 'time', label: 'Time' }
+                                            ]}
+                                            defaultValue={'all'}
+                                        />
+                                    )}
+                                />
+                                {errors.searchField && (
+                                    <span className="text-red-500 text-sm">{errors.searchField.message}</span>
+                                )}
+                            </div>
+
+                            <div>
+                                <label htmlFor="searchValue" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Search Value
+                                </label>
+                                <Controller
+                                    name="searchValue"
                                     control={control}
                                     render={({ field }) => (
                                         <Input
                                             {...field}
-                                            placeholder="Search..."
+                                            id="searchValue"
+                                            placeholder="Enter search value"
                                             prefix={<SearchOutlined />}
                                         />
                                     )}
                                 />
-                                {errors.query && (
-                                    <span className="text-red-500 text-sm">{errors.query.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Sensors
-                                </label>
-                                <Controller
-                                    name="sensorIds"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Select
-                                            {...field}
-                                            mode="multiple"
-                                            placeholder="Select sensors"
-                                            style={{ width: '100%' }}
-                                            options={sensors.map(sensor => ({
-                                                value: sensor.id,
-                                                label: sensor.name
-                                            }))}
-                                        />
-                                    )}
-                                />
-                                {errors.sensorIds && (
-                                    <span className="text-red-500 text-sm">{errors.sensorIds.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Unit
-                                </label>
-                                <Controller
-                                    name="unit"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Select
-                                            {...field}
-                                            placeholder="Select unit"
-                                            style={{ width: '100%' }}
-                                            allowClear
-                                            options={Object.values(UNITS).map(unit => ({
-                                                value: unit,
-                                                label: unit
-                                            }))}
-                                        />
-                                    )}
-                                />
-                                {errors.unit && (
-                                    <span className="text-red-500 text-sm">{errors.unit.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Value
-                                </label>
-                                <Controller
-                                    name="value"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <InputNumber
-                                            {...field}
-                                            placeholder="Enter value"
-                                            style={{ width: '100%' }}
-                                        />
-                                    )}
-                                />
-                                {errors.value && (
-                                    <span className="text-red-500 text-sm">{errors.value.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Date
-                                </label>
-                                <Controller
-                                    name="date"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <DatePicker
-                                            {...field}
-                                            showTime
-                                            placeholder="Select date"
-                                            style={{ width: '100%' }}
-                                            value={field.value ? dayjs(field.value) : null}
-                                            onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
-                                        />
-                                    )}
-                                />
-                                {errors.date && (
-                                    <span className="text-red-500 text-sm">{errors.date.message}</span>
+                                {errors.searchValue && (
+                                    <span className="text-red-500 text-sm">{errors.searchValue.message}</span>
                                 )}
                             </div>
                         </div>

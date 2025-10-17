@@ -8,7 +8,7 @@ import { IActionHistory } from '@/types/action-history'
 import { IActuator } from '@/types/actuator'
 import { DownloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, DatePicker, Input, Select, Table, Tag, Tooltip } from 'antd'
+import { Button, Input, Select, Table, Tag, Tooltip } from 'antd'
 import { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useState } from 'react'
@@ -18,13 +18,10 @@ import { MdOutlineContentCopy } from 'react-icons/md'
 import { z } from 'zod'
 
 type FilterFormData = {
-    queryName?: string;
-    actuatorIds?: string[];
-    actionIds?: string[];
+    actuatorIds?: number[];
+    actionIds?: number[];
     status?: string;
-    date?: number;
-    startDate?: number;
-    endDate?: number;
+    date?: string;
     sortBy?: string;
     sortOrder?: 'ASC' | 'DESC';
     page?: number;
@@ -32,13 +29,10 @@ type FilterFormData = {
 };
 
 const filterSchema = z.object({
-    queryName: z.string().optional(),
-    actuatorIds: z.array(z.string()).optional(),
-    actionIds: z.array(z.string()).optional(),
+    actuatorIds: z.array(z.number()).optional(),
+    actionIds: z.array(z.number()).optional(),
     status: z.string().optional(),
-    date: z.number().optional(),
-    startDate: z.number().optional(),
-    endDate: z.number().optional(),
+    date: z.string().optional(),
     sortBy: z.string().optional(),
     sortOrder: z.enum(['ASC', 'DESC']).optional(),
     page: z.number().min(1).default(1),
@@ -72,6 +66,8 @@ const ActionHistoryPage = () => {
         }
     }, []);
 
+    console.log('errors', errors)
+
     const fetchActuators = useCallback(async () => {
         try {
             const actuators = await getAllActuators();
@@ -85,16 +81,12 @@ const ActionHistoryPage = () => {
         setLoading(true);
         try {
             const cleanedFilter = { ...filter };
-            
-            // Convert date to startDate and endDate with 1 second buffer
-            if (cleanedFilter.date) {
-                cleanedFilter.startDate = cleanedFilter.date - 1000; // Lùi 1 giây
-                cleanedFilter.endDate = cleanedFilter.date + 1000; // Thêm 1 giây
-                delete cleanedFilter.date; // Remove date field
-            }
-            
+
+            // Remove empty values
             Object.keys(cleanedFilter).forEach(key => {
-                if (cleanedFilter[key as keyof FilterFormData] === undefined || cleanedFilter[key as keyof FilterFormData] === null) {
+                if (cleanedFilter[key as keyof FilterFormData] === undefined ||
+                    cleanedFilter[key as keyof FilterFormData] === null ||
+                    cleanedFilter[key as keyof FilterFormData] === '') {
                     delete cleanedFilter[key as keyof FilterFormData];
                 }
             });
@@ -140,23 +132,16 @@ const ActionHistoryPage = () => {
 
     const handleDownload = async () => {
         const value = getValues();
-        
-        // Convert date to startDate and endDate with 1 second buffer for download
-        if (value.date) {
-            value.startDate = value.date - 1000; // Lùi 1 giây
-            value.endDate = value.date + 1000; // Thêm 1 giây
-            delete value.date; // Remove date field
-        }
-        
+
         const blob = await downloadActionHistoryCSV(value);
-        const url = window.URL.createObjectURL(new Blob([blob]));
+        const url = globalThis.URL.createObjectURL(new Blob([blob]));
         const link = document.createElement('a');
         link.href = url;
         link.setAttribute('download', 'action_history.csv');
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
+        link.remove();
+        globalThis.URL.revokeObjectURL(url);
     };
 
     const onSubmit = (data: FilterFormData) => {
@@ -228,7 +213,7 @@ const ActionHistoryPage = () => {
     ];
 
     const handleCopy = (record: IActionHistory) => {
-        const textToCopy = record.timestamp ? dayjs(record.timestamp).format('YYYY-MM-DD HH:mm:ss') : 'N/A';
+        const textToCopy = record.timestamp ? dayjs(record.timestamp).format('DD/MM/YYYY HH:mm:ss') : 'N/A';
         navigator.clipboard.writeText(textToCopy).then(() => {
             toast.success('Time copied to clipboard');
         }).catch(() => {
@@ -244,23 +229,23 @@ const ActionHistoryPage = () => {
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
-                                <label htmlFor="queryName" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Search
+                                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Time
                                 </label>
                                 <Controller
-                                    name="queryName"
+                                    name="date"
                                     control={control}
                                     render={({ field }) => (
                                         <Input
                                             {...field}
-                                            id="queryName"
-                                            placeholder="Search actions..."
+                                            id="date"
+                                            placeholder="DD/MM/YYYY HH:mm:ss"
                                             prefix={<SearchOutlined />}
                                         />
                                     )}
                                 />
-                                {errors.queryName && (
-                                    <span className="text-red-500 text-sm">{errors.queryName.message}</span>
+                                {errors.date && (
+                                    <span className="text-red-500 text-sm">{errors.date.message}</span>
                                 )}
                             </div>
 
@@ -340,30 +325,6 @@ const ActionHistoryPage = () => {
                                 />
                                 {errors.status && (
                                     <span className="text-red-500 text-sm">{errors.status.message}</span>
-                                )}
-                            </div>
-
-                            <div>
-                                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Date
-                                </label>
-                                <Controller
-                                    name="date"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <DatePicker
-                                            {...field}
-                                            id="date"
-                                            showTime
-                                            placeholder="Select date"
-                                            style={{ width: '100%' }}
-                                            value={field.value ? dayjs(field.value) : null}
-                                            onChange={(date) => field.onChange(date ? date.valueOf() : undefined)}
-                                        />
-                                    )}
-                                />
-                                {errors.date && (
-                                    <span className="text-red-500 text-sm">{errors.date.message}</span>
                                 )}
                             </div>
                         </div>
