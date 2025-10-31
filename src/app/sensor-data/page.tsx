@@ -212,13 +212,22 @@ export default function SensorDataPage() {
 
     return (
         <div className="flex-1 flex flex-col">
-            <main className="flex-1 p-6 overflow-auto bg-gray-50">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+            <main className="flex-1 p-8 overflow-auto bg-gradient-to-br from-purple-50 to-pink-50">
+                {/* Filters Card */}
+                <div className="bg-white rounded-2xl shadow-xl border border-purple-100 p-8 mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-2xl font-bold text-gray-900">Search Filters</h3>
+                            <p className="text-sm text-gray-500 mt-1">Filter and search through sensor records</p>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-purple-400 to-pink-400 rounded-xl">
+                            <SearchOutlined className="text-white text-2xl" />
+                        </div>
+                    </div>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="searchField" className="block text-sm font-medium text-gray-700 mb-2">
+                        <div className="flex flex-wrap items-end gap-4">
+                            <div className="flex-1 min-w-[200px]">
+                                <label htmlFor="searchField" className="block text-sm font-semibold text-gray-700 mb-3">
                                     Search Field
                                 </label>
                                 <Controller
@@ -249,8 +258,8 @@ export default function SensorDataPage() {
                                 )}
                             </div>
 
-                            <div>
-                                <label htmlFor="searchValue" className="block text-sm font-medium text-gray-700 mb-2">
+                            <div className="flex-1 min-w-[200px]">
+                                <label htmlFor="searchValue" className="block text-sm font-semibold text-gray-700 mb-3">
                                     Search Value
                                 </label>
                                 <Controller
@@ -269,38 +278,56 @@ export default function SensorDataPage() {
                                     <span className="text-red-500 text-sm">{errors.searchValue.message}</span>
                                 )}
                             </div>
-                        </div>
 
-                        <div className='flex justify-between items-center'>
-                            <div className="flex gap-4 pt-4">
-                                <Button type="primary" htmlType="submit" loading={loading}>
-                                    Apply Filters
-                                </Button>
-                                <Button type="default" onClick={handleReset}>
-                                    Reset
-                                </Button>
-                            </div>
+                            <Button 
+                                type="primary" 
+                                htmlType="submit" 
+                                loading={loading}
+                                size="large"
+                                icon={<SearchOutlined />}
+                            >
+                                Apply Filters
+                            </Button>
+                            
+                            <Button 
+                                type="default" 
+                                onClick={handleReset}
+                                size="large"
+                            >
+                                Reset Filters
+                            </Button>
+
                             <Button
                                 type="primary"
                                 icon={<DownloadOutlined />}
-                                size="middle"
+                                size="large"
                                 onClick={handleDownload}
+                                className="bg-gradient-to-r from-green-500 to-emerald-600 border-none hover:from-green-600 hover:to-emerald-700"
                             >
-                                Export Data
+                                Export CSV
                             </Button>
                         </div>
                     </form>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="p-6 border-b border-gray-200">
-                        <h3 className="text-lg font-medium text-gray-900">Sensor Data</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Total: {data.pagination.total} records
-                        </p>
+                {/* Data Table Card */}
+                <div className="bg-white rounded-2xl shadow-xl border border-purple-100">
+                    <div className="p-8 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-900">Sensor Records</h3>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    Showing historical sensor data records
+                                </p>
+                            </div>
+                            <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-xl px-6 py-3">
+                                <p className="text-sm font-medium text-purple-600">Total Records</p>
+                                <p className="text-3xl font-bold text-purple-900">{data.pagination.total}</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className='p-5'>
+                    <div className='p-6'>
                         <Table
                             columns={columns}
                             dataSource={data.data}
@@ -311,10 +338,16 @@ export default function SensorDataPage() {
                                 pageSize: data.pagination.size ?? 10,
                                 total: data.pagination.total ?? 0,
                                 onChange: handlePageChange,
+                                showSizeChanger: true,
+                                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
                             }}
                             onChange={(__, _, sorter) => {
                                 handleChangeSort(sorter);
                             }}
+                            className="sensor-data-table"
+                            size="middle"
+                            bordered
+                            scroll={{ x: 'max-content' }}
                         />
                     </div>
                 </div>

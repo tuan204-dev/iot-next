@@ -107,20 +107,20 @@ const HomePage = () => {
         })()
     }, [])
 
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            const isConnected = await ping();
-            if (!isConnected) {
-                setWaitingConnect(true);
-            } else if (waitingConnect) {
-                console.log('im here')
-                setWaitingConnect(false);
-                await handleSetLastStates();
-            }
-        }, 5000);
+    // useEffect(() => {
+    //     const interval = setInterval(async () => {
+    //         const isConnected = await ping();
+    //         if (!isConnected) {
+    //             setWaitingConnect(true);
+    //         } else if (waitingConnect) {
+    //             console.log('im here')
+    //             setWaitingConnect(false);
+    //             await handleSetLastStates();
+    //         }
+    //     }, 5000);
 
-        return () => clearInterval(interval);
-    }, [waitingConnect])
+    //     return () => clearInterval(interval);
+    // }, [waitingConnect])
 
 
 
@@ -216,72 +216,138 @@ const HomePage = () => {
     }
 
     return (
-        <main className="flex-1 flex flex-col gap-6 p-6 bg-gray-50 h-screen">
-            {/* Cards grid */}
+        <main className="flex-1 flex flex-col gap-8 p-8 bg-gradient-to-br from-purple-50 to-pink-50 h-screen overflow-auto">
+
+            {/* Sensor Cards - 3 column grid */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <RealtimeData setRecentSensorData={setRecentSensorData} />
             </div>
-            {/* Chart section */}
-            <div className='gap-6 flex-1 grid grid-cols-3'>
-                <div className='col-span-2'>
+
+            {/* Chart + Controls - Side by Side */}
+            <div className="flex gap-6 flex-1 min-h-0">
+                <div className="flex-1">
                     <SensorDataTrend recentSensorData={recentSensorData} />
                 </div>
-                <div className='gap-6 grid grid-rows-3'>
-                    {/* Lamp control card */}
-                    <div className="bg-white rounded-xl p-6 card-shadow">
+                <div className="w-96 flex flex-col gap-6">
+                    {/* LED control card */}
+                    <div className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Led</p>
-                                <p className="mt-1 text-lg font-semibold text-gray-900">
-                                    Led Room
-                                </p>
-                            </div>
-                            <Switch checked={isLedOn} onChange={handleSwitchLed} loading={isSwitchingLed} />
-                        </div>
-                        <div className="mt-4">
-                            {lastChangeLed &&
-                                <div className="flex items-center text-sm text-gray-500">
-                                    <i className="fas fa-clock mr-1" />
-                                    <span>Last changed: {dayjs(lastChangeLed).fromNow()}</span>
+                            <div className="flex-1">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-3 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl">
+                                        <i className="fas fa-lightbulb text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Smart LED</p>
+                                        <p className="text-lg font-bold text-gray-900">Living Room</p>
+                                    </div>
                                 </div>
-                            }
-                        </div>
-                    </div>
-                    {/* Fan control card */}
-                    <div className="bg-white rounded-xl p-6 card-shadow">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Fan</p>
-                                <p className="mt-1 text-lg font-semibold text-gray-900">
-                                    Bedroom
-                                </p>
                             </div>
-                            <Switch checked={isFanOn} onChange={handleSwitchFan} loading={isSwitchingFan} />
+                            <Switch 
+                                checked={isLedOn} 
+                                onChange={handleSwitchLed} 
+                                loading={isSwitchingLed}
+                                className="scale-110"
+                            />
                         </div>
-                        <div className="mt-4">
-                            {lastChangeFan && (
-                                <div className="flex items-center text-sm text-gray-500">
-                                    <i className="fas fa-clock mr-1" />
-                                    <span>Last changed: {dayjs(lastChangeFan).fromNow()}</span>
-                                </div>
+                        {/* Status Badge */}
+                        <div className="mt-4 flex items-center justify-between">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                isLedOn 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                            }`}>
+                                <span className={`w-2 h-2 mr-2 rounded-full ${
+                                    isLedOn ? 'bg-green-500' : 'bg-gray-400'
+                                }`}></span>
+                                {isLedOn ? 'Active' : 'Inactive'}
+                            </span>
+                            {lastChangeLed && (
+                                <span className="text-xs text-gray-500">
+                                    {dayjs(lastChangeLed).fromNow()}
+                                </span>
                             )}
                         </div>
                     </div>
-                    {/* Air control card */}
-                    <div className="bg-white rounded-xl p-6 card-shadow">
+
+                    {/* Fan control card */}
+                    <div className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
                         <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Air Conditioner</p>
-                                <p className="mt-1 text-lg font-semibold text-gray-900">Office</p>
-                            </div>
-                            <Switch checked={isAirConditionerOn} onChange={handleSwitchAirConditioner} loading={isSwitchingAirConditioner} />
-                        </div>
-                        <div className="mt-4">
-                            {lastChangeAirConditioner && (
-                                <div className="flex items-center text-sm text-gray-500">
-                                    <i className="fas fa-clock mr-1" />
-                                    <span>Last changed: {dayjs(lastChangeAirConditioner).fromNow()}</span>
+                            <div className="flex-1">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-3 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-xl">
+                                        <i className="fas fa-fan text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Smart Fan</p>
+                                        <p className="text-lg font-bold text-gray-900">Bedroom</p>
+                                    </div>
                                 </div>
+                            </div>
+                            <Switch 
+                                checked={isFanOn} 
+                                onChange={handleSwitchFan} 
+                                loading={isSwitchingFan}
+                                className="scale-110"
+                            />
+                        </div>
+                        {/* Status Badge */}
+                        <div className="mt-4 flex items-center justify-between">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                isFanOn 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                            }`}>
+                                <span className={`w-2 h-2 mr-2 rounded-full ${
+                                    isFanOn ? 'bg-green-500' : 'bg-gray-400'
+                                }`}></span>
+                                {isFanOn ? 'Active' : 'Inactive'}
+                            </span>
+                            {lastChangeFan && (
+                                <span className="text-xs text-gray-500">
+                                    {dayjs(lastChangeFan).fromNow()}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Air Conditioner control card */}
+                    <div className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                        <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-3 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl">
+                                        <i className="fas fa-wind text-white text-xl" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Air Purifier</p>
+                                        <p className="text-lg font-bold text-gray-900">Office</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <Switch 
+                                checked={isAirConditionerOn} 
+                                onChange={handleSwitchAirConditioner} 
+                                loading={isSwitchingAirConditioner}
+                                className="scale-110"
+                            />
+                        </div>
+                        {/* Status Badge */}
+                        <div className="mt-4 flex items-center justify-between">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                isAirConditionerOn 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                            }`}>
+                                <span className={`w-2 h-2 mr-2 rounded-full ${
+                                    isAirConditionerOn ? 'bg-green-500' : 'bg-gray-400'
+                                }`}></span>
+                                {isAirConditionerOn ? 'Active' : 'Inactive'}
+                            </span>
+                            {lastChangeAirConditioner && (
+                                <span className="text-xs text-gray-500">
+                                    {dayjs(lastChangeAirConditioner).fromNow()}
+                                </span>
                             )}
                         </div>
                     </div>

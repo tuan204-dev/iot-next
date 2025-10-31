@@ -34,24 +34,24 @@ const CustomTooltip = ({ active, payload, label, selectedMetric }: TooltipProps)
                     return {
                         value: data.temperature,
                         unit: '°C',
-                        color: 'text-blue-600',
-                        bgColor: 'bg-blue-600',
+                        color: 'text-purple-600',
+                        bgColor: 'bg-purple-600',
                         label: 'Temperature'
                     };
                 case 'humidity':
                     return {
                         value: data.humidity,
                         unit: '%',
-                        color: 'text-green-600',
-                        bgColor: 'bg-green-600',
+                        color: 'text-cyan-600',
+                        bgColor: 'bg-cyan-600',
                         label: 'Humidity'
                     };
                 case 'light':
                     return {
                         value: data.light,
                         unit: ' Lux',
-                        color: 'text-yellow-600',
-                        bgColor: 'bg-yellow-600',
+                        color: 'text-amber-600',
+                        bgColor: 'bg-amber-600',
                         label: 'Light'
                     };
                 default:
@@ -124,33 +124,39 @@ const SensorDataTrend:FC<SensorDataTrendProps> = ({ recentSensorData }) => {
         switch (selectedMetric) {
             case 'temperature':
                 return {
-                    stroke: '#5B9BD5',
+                    stroke: '#8b5cf6',
                     name: 'Temperature (°C)',
-                    dataKey: 'temperature'
+                    dataKey: 'temperature',
+                    gradientId: 'colorTemp'
                 };
             case 'humidity':
                 return {
-                    stroke: '#70AD47',
+                    stroke: '#06b6d4',
                     name: 'Humidity (%)',
-                    dataKey: 'humidity'
+                    dataKey: 'humidity',
+                    gradientId: 'colorHumidity'
                 };
             case 'light':
                 return {
-                    stroke: '#FFC000',
+                    stroke: '#f59e0b',
                     name: 'Light (Lux)',
-                    dataKey: 'light'
+                    dataKey: 'light',
+                    gradientId: 'colorLight'
                 };
         }
     };
 
     const metricConfig = getMetricConfig();
     return (
-        <div className="bg-white rounded-xl p-6 card-shadow flex flex-col h-full">
-            <div className="flex items-center justify-between mb-3">
+        <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h3 className="text-lg font-medium text-gray-900">
-                        Sensor Data Trends
+                    <h3 className="text-2xl font-bold text-gray-900">
+                        Sensor Analytics
                     </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Real-time data visualization
+                    </p>
                 </div>
                 <div className="flex space-x-2">
                     <Select
@@ -164,6 +170,7 @@ const SensorDataTrend:FC<SensorDataTrendProps> = ({ recentSensorData }) => {
                             value: 'humidity', label: 'Humidity',
                         }]}
                         size='large'
+                        className="w-48"
                     />
                 </div>
             </div>
@@ -173,6 +180,20 @@ const SensorDataTrend:FC<SensorDataTrendProps> = ({ recentSensorData }) => {
                         data={data}
                         margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                     >
+                        <defs>
+                            <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorHumidity" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                            </linearGradient>
+                            <linearGradient id="colorLight" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                            </linearGradient>
+                        </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis
                             dataKey="time"
@@ -194,8 +215,9 @@ const SensorDataTrend:FC<SensorDataTrendProps> = ({ recentSensorData }) => {
                             dataKey={metricConfig.dataKey}
                             stroke={metricConfig.stroke}
                             strokeWidth={3}
-                            dot={false}
-                            activeDot={{ r: 5, fill: metricConfig.stroke, strokeWidth: 0 }}
+                            fill={`url(#${metricConfig.gradientId})`}
+                            dot={{ fill: metricConfig.stroke, r: 4 }}
+                            activeDot={{ r: 6, fill: metricConfig.stroke }}
                             name={metricConfig.name}
                             isAnimationActive={false}
                         />

@@ -46,13 +46,13 @@ const RealtimeData: React.FC<RealtimeDataProps> = ({ setRecentSensorData }) => {
         socketRef.current = newSocket;
 
         // Connection events
-        // newSocket.on('connect', () => {
-        //     setIsConnected(true);
-        // });
+        newSocket.on('connect', () => {
+            console.log('Connected to sensor data stream');
+        });
 
-        // newSocket.on('disconnect', () => {
-        //     setIsConnected(false);
-        // });
+        newSocket.on('disconnect', () => {
+            console.log('Disconnected from sensor data stream');
+        });
 
         // Sensor data events
         newSocket.on('sensor_data', (data: SensorData) => {
@@ -137,20 +137,22 @@ const RealtimeData: React.FC<RealtimeDataProps> = ({ setRecentSensorData }) => {
     return (
         <>
             {/* Temperature card */}
-            <div ref={tempCardRef} className="bg-white rounded-xl p-6 card-shadow" id="temperature-card">
+            <div ref={tempCardRef} className="bg-white/30 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/20 transition-all duration-300 hover:transform hover:scale-105" id="temperature-card">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-gray-500">Temperature</p>
-                        <p className="mt-1 text-3xl font-semibold text-gray-900">
-                            <span id="temperature-value">{sensorData.temperature}</span> <span className="text-xl">°C</span>
+                        <p className="text-sm font-semibold text-purple-600 uppercase tracking-wide">
+                            Temperature
+                        </p>
+                        <p className="mt-3 text-4xl font-bold text-gray-900">
+                            <span id="temperature-value">{sensorData.temperature}</span> <span className="text-2xl">°C</span>
                         </p>
                     </div>
-                    <div className="p-3 rounded-full bg-blue-50 text-blue-600">
-                        <i className="fas fa-thermometer-half text-xl" />
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-400 to-pink-400 text-white shadow-lg">
+                        <i className="fas fa-thermometer-half text-3xl" />
                     </div>
                 </div>
                 <div className="mt-4">
-                    <div className="flex items-center text-sm text-gray-500">
+                    <div className="flex items-center text-sm text-gray-600 font-medium">
                         <i className="fas fa-clock mr-1" />
                         <span id="temperature-time">
                             {lastUpdated ? `Last updated: ${lastUpdated}` : 'Waiting for data...'}
@@ -159,20 +161,22 @@ const RealtimeData: React.FC<RealtimeDataProps> = ({ setRecentSensorData }) => {
                 </div>
             </div>
             {/* Humidity card */}
-            <div ref={humidityCardRef} className="bg-white rounded-xl p-6 card-shadow" id="humidity-card">
+            <div ref={humidityCardRef} className="bg-white/30 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/20 transition-all duration-300 hover:transform hover:scale-105" id="humidity-card">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-gray-500">Humidity</p>
-                        <p className="mt-1 text-3xl font-semibold text-gray-900">
-                            <span id="humidity-value">{sensorData.humidity}</span> <span className="text-xl">%</span>
+                        <p className="text-sm font-semibold text-purple-600 uppercase tracking-wide">
+                            Humidity
+                        </p>
+                        <p className="mt-3 text-4xl font-bold text-gray-900">
+                            <span id="humidity-value">{sensorData.humidity}</span> <span className="text-2xl">%</span>
                         </p>
                     </div>
-                    <div className="p-3 rounded-full bg-blue-50 text-blue-600">
-                        <i className="fas fa-tint text-xl" />
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-400 text-white shadow-lg">
+                        <i className="fas fa-tint text-3xl" />
                     </div>
                 </div>
                 <div className="mt-4">
-                    <div className="flex items-center text-sm text-gray-500">
+                    <div className="flex items-center text-sm text-gray-600 font-medium">
                         <i className="fas fa-clock mr-1" />
                         <span id="humidity-time">
                             {lastUpdated ? `Last updated: ${lastUpdated}` : 'Waiting for data...'}
@@ -181,20 +185,22 @@ const RealtimeData: React.FC<RealtimeDataProps> = ({ setRecentSensorData }) => {
                 </div>
             </div>
             {/* Light card */}
-            <div ref={lightCardRef} className="bg-white rounded-xl p-6 card-shadow" id="light-card">
+            <div ref={lightCardRef} className="bg-white/30 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/20 transition-all duration-300 hover:transform hover:scale-105" id="light-card">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-gray-500">Light</p>
-                        <p className="mt-1 text-3xl font-semibold text-gray-900">
-                            <span id="light-value">{sensorData.light}</span> <span className="text-xl">Lux</span>
+                        <p className="text-sm font-semibold text-purple-600 uppercase tracking-wide">
+                            Light
+                        </p>
+                        <p className="mt-3 text-4xl font-bold text-gray-900">
+                            <span id="light-value">{sensorData.light}</span> <span className="text-2xl">Lux</span>
                         </p>
                     </div>
-                    <div className="p-3 rounded-full bg-blue-50 text-blue-600">
-                        <i className="fas fa-lightbulb text-xl" />
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-400 text-white shadow-lg">
+                        <i className="fas fa-lightbulb text-3xl" />
                     </div>
                 </div>
                 <div className="mt-4">
-                    <div className="flex items-center text-sm text-gray-500">
+                    <div className="flex items-center text-sm text-gray-600 font-medium">
                         <i className="fas fa-clock mr-1" />
                         <span id="light-time">
                             {lastUpdated ? `Last updated: ${lastUpdated}` : 'Waiting for data...'}

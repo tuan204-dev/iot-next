@@ -223,13 +223,22 @@ const ActionHistoryPage = () => {
 
     return (
         <div className="flex-1 flex flex-col">
-            <main className="flex-1 p-6 overflow-auto bg-gray-50">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+            <main className="flex-1 p-8 overflow-auto bg-gradient-to-br from-purple-50 to-pink-50">
+                {/* Filters Card */}
+                <div className="bg-white rounded-2xl shadow-xl border border-purple-100 p-8 mb-8">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-2xl font-bold text-gray-900">Search Filters</h3>
+                            <p className="text-sm text-gray-500 mt-1">Filter action history by various criteria</p>
+                        </div>
+                        <div className="p-3 bg-gradient-to-br from-blue-400 to-cyan-400 rounded-xl">
+                            <SearchOutlined className="text-white text-2xl" />
+                        </div>
+                    </div>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div>
-                                <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="date" className="block text-sm font-semibold text-gray-700 mb-3">
                                     Time
                                 </label>
                                 <Controller
@@ -250,7 +259,7 @@ const ActionHistoryPage = () => {
                             </div>
 
                             <div>
-                                <label htmlFor="actionIds" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="actionIds" className="block text-sm font-semibold text-gray-700 mb-3">
                                     Actions
                                 </label>
                                 <Controller
@@ -276,7 +285,7 @@ const ActionHistoryPage = () => {
                             </div>
 
                             <div>
-                                <label htmlFor="actuatorIds" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="actuatorIds" className="block text-sm font-semibold text-gray-700 mb-3">
                                     Actuators
                                 </label>
                                 <Controller
@@ -302,7 +311,7 @@ const ActionHistoryPage = () => {
                             </div>
 
                             <div>
-                                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+                                <label htmlFor="status" className="block text-sm font-semibold text-gray-700 mb-3">
                                     Status
                                 </label>
                                 <Controller
@@ -329,36 +338,56 @@ const ActionHistoryPage = () => {
                             </div>
                         </div>
 
-                        <div className='flex items-center justify-between'>
-                            <div className="flex gap-4 pt-4">
-                                <Button type="primary" htmlType="submit" loading={loading}>
+                        <div className='flex items-center justify-between pt-6 border-t border-gray-100'>
+                            <div className="flex gap-4">
+                                <Button
+                                    type="primary"
+                                    htmlType="submit"
+                                    loading={loading}
+                                    size="large"
+                                    icon={<SearchOutlined />}
+                                >
                                     Apply Filters
                                 </Button>
-                                <Button type="default" onClick={handleReset}>
-                                    Reset
+                                <Button
+                                    type="default"
+                                    onClick={handleReset}
+                                    size="large"
+                                >
+                                    Reset Filters
                                 </Button>
                             </div>
                             <Button
                                 type="primary"
                                 icon={<DownloadOutlined />}
-                                size="middle"
+                                size="large"
                                 onClick={handleDownload}
+                                className="bg-gradient-to-r from-green-500 to-emerald-600 border-none hover:from-green-600 hover:to-emerald-700"
                             >
-                                Export Data
+                                Export CSV
                             </Button>
                         </div>
                     </form>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="p-6 border-b border-gray-200">
-                        <h3 className="text-lg font-medium text-gray-900">Action History</h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Total: {data.pagination.total} records
-                        </p>
+                {/* Data Table Card */}
+                <div className="bg-white rounded-2xl shadow-xl border border-purple-100">
+                    <div className="p-8 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-900">Action Records</h3>
+                                <p className="text-sm text-gray-500 mt-2">
+                                    Complete history of all device control actions
+                                </p>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-100 to-cyan-100 rounded-xl px-6 py-3">
+                                <p className="text-sm font-medium text-blue-600">Total Records</p>
+                                <p className="text-3xl font-bold text-blue-900">{data.pagination.total}</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className='p-5'>
+                    <div className='p-6'>
                         <Table
                             columns={columns}
                             dataSource={data.data}
@@ -373,6 +402,10 @@ const ActionHistoryPage = () => {
                             onChange={(__, _, sorter) => {
                                 handleChangeSort(sorter);
                             }}
+                            className="sensor-data-table"
+                            size="middle"
+                            bordered
+                            scroll={{ x: 'max-content' }}
                         />
                     </div>
                 </div>
