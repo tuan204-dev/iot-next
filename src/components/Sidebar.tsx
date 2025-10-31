@@ -39,7 +39,7 @@ const Sidebar = () => {
                 <div className="flex items-center justify-center h-20 px-4 border-b border-purple-700">
                     <h1 className="text-2xl !font-bold tracking-wider !m-0">
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-300">
-                            IOT PTIT
+                            IOT Dashboard
                         </span>
                     </h1>
                 </div>

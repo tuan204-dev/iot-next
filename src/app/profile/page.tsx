@@ -29,7 +29,7 @@ const ProfilePage = () => {
                                 </p>
                                 <div className="flex justify-center md:justify-start space-x-6">
                                     <a
-                                        href="https://github.com/tuan204-dev"
+                                        href="https://github.com/Tiep23"
                                         target="_blank"
                                         className="p-3 bg-gradient-to-br from-gray-700 to-gray-900 rounded-xl text-white hover:scale-110 transition-all duration-300 shadow-lg"
                                         title="GitHub"
