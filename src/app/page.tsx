@@ -32,14 +32,17 @@ const HomePage = () => {
     const [isSwitchingLed, setIsSwitchingLed] = useState(false);
     const [isSwitchingFan, setIsSwitchingFan] = useState(false);
     const [isSwitchingAirConditioner, setIsSwitchingAirConditioner] = useState(false);
+    const [isSwitchingBell, setIsSwitchingBell] = useState(false);
 
     const [isLedOn, setIsLedOn] = useState(false);
     const [isFanOn, setIsFanOn] = useState(false);
     const [isAirConditionerOn, setIsAirConditionerOn] = useState(false);
+    const [isBellOn, setIsBellOn] = useState(false);
 
     const [lastChangeLed, setLastChangeLed] = useLocalStorage<Date | null>('lastChangeLed', null);
     const [lastChangeFan, setLastChangeFan] = useLocalStorage<Date | null>('lastChangeFan', null);
     const [lastChangeAirConditioner, setLastChangeAirConditioner] = useLocalStorage<Date | null>('lastChangeAirConditioner', null);
+    const [lastChangeBell, setLastChangeBell] = useLocalStorage<Date | null>('lastChangeBell', null);
 
     const [recentSensorData, setRecentSensorData] = useState<IRecentSensorData>({humidity: [], light: [], temperature: []} as IRecentSensorData);
 
@@ -49,6 +52,7 @@ const HomePage = () => {
         const ledAction = lastActions.find(action => action.actuatorId === ACTUATOR_IDS.LED);
         const fanAction = lastActions.find(action => action.actuatorId === ACTUATOR_IDS.FAN);
         const airConditionerAction = lastActions.find(action => action.actuatorId === ACTUATOR_IDS.AIR_CONDITIONER);
+        const bellAction = lastActions.find(action => action.actuatorId === ACTUATOR_IDS.BELL);
 
         if (ledAction?.state === 'on') {
             setIsLedOn(true);
@@ -66,6 +70,12 @@ const HomePage = () => {
             setIsAirConditionerOn(true);
         } else {
             setIsAirConditionerOn(false);
+        }
+
+        if (bellAction?.state === 'on') {
+            setIsBellOn(true);
+        } else {
+            setIsBellOn(false);
         }
     }
 
@@ -196,6 +206,30 @@ const HomePage = () => {
         }
     }
 
+    const handleSwitchBell = async (isTurnOn: boolean) => {
+        try {
+            setIsSwitchingBell(true);
+
+            const res = await triggerDevice({
+                actionId: isTurnOn ? 7 : 8,
+                actuatorId: 6
+            })
+
+            if (!res.status) {
+                throw new Error('Failed to trigger device');
+            }
+            setIsBellOn(isTurnOn);
+
+            setLastChangeBell(new Date());
+            toast.success(`Bell turned ${isTurnOn ? 'on' : 'off'}`);
+        } catch (e) {
+            console.log(e);
+            toast.error('Failed to switch Bell');
+        } finally {
+            setIsSwitchingBell(false);
+        }
+    }
+
     if (isLoading) {
         return (
             <div className='h-screen w-screen grid place-items-center'>
@@ -226,7 +260,7 @@ const HomePage = () => {
                 <div className='col-span-2'>
                     <SensorDataTrend recentSensorData={recentSensorData} />
                 </div>
-                <div className='gap-6 grid grid-rows-3'>
+                <div className='gap-6 grid grid-rows-4'>
                     {/* Lamp control card */}
                     <div className="bg-white rounded-xl p-6 card-shadow">
                         <div className="flex items-center justify-between">
@@ -283,6 +317,26 @@ const HomePage = () => {
                                     <span>Last changed: {dayjs(lastChangeAirConditioner).fromNow()}</span>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                    {/* Bell control card */}
+                    <div className="bg-white rounded-xl p-6 card-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-500">Bell</p>
+                                <p className="mt-1 text-lg font-semibold text-gray-900">
+                                    Bell
+                                </p>
+                            </div>
+                            <Switch checked={isBellOn} onChange={handleSwitchBell} loading={isSwitchingBell} />
+                        </div>
+                        <div className="mt-4">
+                            {lastChangeBell &&
+                                <div className="flex items-center text-sm text-gray-500">
+                                    <i className="fas fa-clock mr-1" />
+                                    <span>Last changed: {dayjs(lastChangeBell).fromNow()}</span>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>

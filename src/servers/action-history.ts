@@ -27,3 +27,9 @@ export const downloadActionHistoryCSV = async (params: IActionHistoryParams = {}
 
     return data;
 }
+
+export const getDeviceCountDay = async () => {
+    const { data } = await axiosInstance.get('/action-histories/device-counts-today')
+
+    return data?.devices;
+}

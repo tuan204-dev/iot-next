@@ -8,6 +8,7 @@ export enum ACTUATOR_IDS {
     LED = 3,
     FAN = 4,
     AIR_CONDITIONER = 5,
+    BELL = 6,
 }
 
 export const SENSOR_LIMITS = {
