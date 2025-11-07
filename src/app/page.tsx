@@ -13,6 +13,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import { useEffect, useState } from 'react'
 import { useLocalStorage } from 'usehooks-ts'
 import toast from 'react-hot-toast'
+import { useDayCount } from '@/hook/action-history'
 
 
 dayjs.extend(relativeTime);
@@ -26,6 +27,13 @@ export interface SensorData {
 const HomePage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [waitingConnect, setWaitingConnect] = useState(false);
+    const { deviceCount, mutate: freshCount } = useDayCount()
+
+    // Helper function to get device count by actuator ID
+    const getDeviceCount = (actuatorId: number) => {
+        const device = deviceCount?.find(d => d.deviceId === actuatorId);
+        return device?.counts || { on: 0, off: 0 };
+    }
 
 
     // Device control states
@@ -44,7 +52,7 @@ const HomePage = () => {
     const [lastChangeAirConditioner, setLastChangeAirConditioner] = useLocalStorage<Date | null>('lastChangeAirConditioner', null);
     const [lastChangeBell, setLastChangeBell] = useLocalStorage<Date | null>('lastChangeBell', null);
 
-    const [recentSensorData, setRecentSensorData] = useState<IRecentSensorData>({humidity: [], light: [], temperature: []} as IRecentSensorData);
+    const [recentSensorData, setRecentSensorData] = useState<IRecentSensorData>({ humidity: [], light: [], temperature: [] } as IRecentSensorData);
 
     const handleSetLastStates = async () => {
         const lastActions = await getLastActions();
@@ -149,6 +157,7 @@ const HomePage = () => {
             setIsLedOn(isTurnOn);
 
             setLastChangeLed(new Date());
+            freshCount();
             toast.success(`LED turned ${isTurnOn ? 'on' : 'off'}`);
         } catch (e) {
             console.log(e);
@@ -173,6 +182,7 @@ const HomePage = () => {
             setIsFanOn(isTurnOn);
 
             setLastChangeFan(new Date());
+            freshCount();
             toast.success(`Fan turned ${isTurnOn ? 'on' : 'off'}`);
         } catch (e) {
             console.log(e);
@@ -197,6 +207,7 @@ const HomePage = () => {
             setIsAirConditionerOn(isTurnOn);
 
             setLastChangeAirConditioner(new Date());
+            freshCount();
             toast.success(`Air Purifier turned ${isTurnOn ? 'on' : 'off'}`);
         } catch (e) {
             console.log(e);
@@ -221,6 +232,7 @@ const HomePage = () => {
             setIsBellOn(isTurnOn);
 
             setLastChangeBell(new Date());
+            freshCount();
             toast.success(`Bell turned ${isTurnOn ? 'on' : 'off'}`);
         } catch (e) {
             console.log(e);
@@ -240,7 +252,7 @@ const HomePage = () => {
 
     if (waitingConnect) {
         return (
-            <div className='h-screen w-screen grid place-items-center'>
+            <div className='w-screen grid place-items-center'>
                 <div className='flex flex-col gap-y-8'>
                     <Spin size='large' />
                     <p className='text-gray-500'>Waiting for device to connect...</p>
@@ -250,7 +262,7 @@ const HomePage = () => {
     }
 
     return (
-        <main className="flex-1 flex flex-col gap-6 p-6 bg-gray-50 h-screen">
+        <main className="flex-1 flex flex-col gap-6 p-6 bg-gray-50 ">
             {/* Cards grid */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <RealtimeData setRecentSensorData={setRecentSensorData} />
@@ -272,7 +284,12 @@ const HomePage = () => {
                             </div>
                             <Switch checked={isLedOn} onChange={handleSwitchLed} loading={isSwitchingLed} />
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center gap-3 text-sm">
+                                <span className="text-green-600 font-medium">ON: {getDeviceCount(ACTUATOR_IDS.LED).on}</span>
+                                <span className="text-gray-400">|</span>
+                                <span className="text-red-600 font-medium">OFF: {getDeviceCount(ACTUATOR_IDS.LED).off}</span>
+                            </div>
                             {lastChangeLed &&
                                 <div className="flex items-center text-sm text-gray-500">
                                     <i className="fas fa-clock mr-1" />
@@ -292,7 +309,12 @@ const HomePage = () => {
                             </div>
                             <Switch checked={isFanOn} onChange={handleSwitchFan} loading={isSwitchingFan} />
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center gap-3 text-sm">
+                                <span className="text-green-600 font-medium">ON: {getDeviceCount(ACTUATOR_IDS.FAN).on}</span>
+                                <span className="text-gray-400">|</span>
+                                <span className="text-red-600 font-medium">OFF: {getDeviceCount(ACTUATOR_IDS.FAN).off}</span>
+                            </div>
                             {lastChangeFan && (
                                 <div className="flex items-center text-sm text-gray-500">
                                     <i className="fas fa-clock mr-1" />
@@ -310,7 +332,12 @@ const HomePage = () => {
                             </div>
                             <Switch checked={isAirConditionerOn} onChange={handleSwitchAirConditioner} loading={isSwitchingAirConditioner} />
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center gap-3 text-sm">
+                                <span className="text-green-600 font-medium">ON: {getDeviceCount(ACTUATOR_IDS.AIR_CONDITIONER).on}</span>
+                                <span className="text-gray-400">|</span>
+                                <span className="text-red-600 font-medium">OFF: {getDeviceCount(ACTUATOR_IDS.AIR_CONDITIONER).off}</span>
+                            </div>
                             {lastChangeAirConditioner && (
                                 <div className="flex items-center text-sm text-gray-500">
                                     <i className="fas fa-clock mr-1" />
@@ -330,7 +357,12 @@ const HomePage = () => {
                             </div>
                             <Switch checked={isBellOn} onChange={handleSwitchBell} loading={isSwitchingBell} />
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center gap-3 text-sm">
+                                <span className="text-green-600 font-medium">ON: {getDeviceCount(ACTUATOR_IDS.BELL).on}</span>
+                                <span className="text-gray-400">|</span>
+                                <span className="text-red-600 font-medium">OFF: {getDeviceCount(ACTUATOR_IDS.BELL).off}</span>
+                            </div>
                             {lastChangeBell &&
                                 <div className="flex items-center text-sm text-gray-500">
                                     <i className="fas fa-clock mr-1" />

@@ -33,7 +33,7 @@ export default function RootLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
                 <Toaster />
-                <div className="flex h-screen overflow-hidden">
+                <div className="flex overflow-hidden">
                     <Sidebar />
                     {children}
 

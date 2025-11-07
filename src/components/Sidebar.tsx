@@ -26,6 +26,12 @@ const Sidebar = () => {
             active: pathname === '/action-history',
         },
         {
+            name: 'Count Day',
+            href: '/count-day',
+            icon: <i className="fas fa-history mr-3" />,
+            active: pathname === '/count-day',
+        },
+        {
             name: 'Profile',
             href: '/profile',
             icon: <i className="fas fa-user mr-3" />,
